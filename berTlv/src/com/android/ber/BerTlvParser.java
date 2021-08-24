@@ -2,27 +2,24 @@ package com.android.ber;
 
 import javacard.framework.JCSystem;
 
-import java.util.ArrayList;
-
 public class BerTlvParser {
 
     public BerTlvParser() {
 
     }
 
-    public BerList parser(byte[] buffer, short offset, short length)
+    public BerLinkList parser(byte[] buffer, short offset, short length)
     {
-        short tagsCount;
-        if (((tagsCount = CountNumberOfTags(buffer, offset, length)) == 0) || length == 0) return null;
+        if ((CountNumberOfTags(buffer, offset, length) == 0) || length == 0) return null;
 
         /* TODO: null check */
-        BerList tlvs = new BerList(tagsCount);
+        BerLinkList tlvs = new BerLinkList();
 
         short tOffset = offset;
         /* TODO:- while(offset < length - 1) or max 100, release library has max 100 */
         for (short i = 0; i < 100 ; i++) {
             BerTlv tlv = GetTlvfrom(buffer, tOffset, (short) (length -  tOffset));
-            tlvs.add(tlv);
+            tlvs.AddToBottom(tlv);
 
             if(tlv.offset >= offset + length) {
                 break;
@@ -137,19 +134,18 @@ public class BerTlvParser {
         tlv.berLengthPtr      = createLength(buffer, (short) (offset + tagBytesCount));
         tlv.berLength         = getDataLength(buffer, (short) (offset + tagBytesCount));
 
+        short valueOffset = (short) (offset + tagBytesCount + lengthBytesCount);
+        tlv.offset = (short) (valueOffset + tlv.berLength);
+
         // value calculation
-        // TODO: if Bit 5 is set; "constructed data object"
+        // if Bit 5 is set its a "constructed data object"
         if ((buffer[offset] & 0x20) == 0x20 ) {
             /* TODO:- do it using transient memory & error check*/
             tlv.berLinkList = new BerLinkList();
             tlv.berValuePtr = null;
-
-            short valueOffset = (short) (offset + tagBytesCount + lengthBytesCount);
-            AddSublistBerTlv(buffer, valueOffset, lengthBytesCount, tlv.berLength, tlv.berLinkList);
+            AddSublistBerTlv(buffer, valueOffset, tlv.berLength, tlv.berLinkList);
         } else {
             // TODO: remove 2 time calls to "getTotalLengthBytesCount"
-            short valueOffset = (short) (offset + tagBytesCount + lengthBytesCount);
-            tlv.offset = (short) (valueOffset + tlv.berLength);
             tlv.berValuePtr  = createValue(buffer, valueOffset, tlv.berLength);
             tlv.berLinkList = null;
         }
@@ -157,17 +153,16 @@ public class BerTlvParser {
         return tlv;
     }
 
-    private void AddSublistBerTlv(byte[] buffer, short aOffset, short aDataBytesCount,
-                                  short valueLength, BerLinkList linkList) {
-        short startPosition = aOffset;
+    private void AddSublistBerTlv(byte[] buffer, short offset, short valueLength, BerLinkList linkList) {
+        short startPosition = offset;
         short len = valueLength;
-        while (startPosition < aOffset + valueLength ) {
-            //ParseResult result = parseWithResult(aLevel+1, buffer, startPosition, len);
-            BerTlv tlv = GetTlvfrom(buffer,startPosition, len);
+
+        while (startPosition < offset + valueLength) {
+            BerTlv tlv = GetTlvfrom(buffer, startPosition, len);
             linkList.AddToBottom(tlv);
 
             startPosition = tlv.offset;
-            len           = (short) ((aOffset + valueLength) - startPosition);
+            len           = (short) ((offset + valueLength) - startPosition);
         }
     }
 }

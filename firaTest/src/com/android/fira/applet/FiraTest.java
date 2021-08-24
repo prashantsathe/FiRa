@@ -45,8 +45,8 @@ public class FiraTest {
         buf[2] = (byte) 0x40;
         buf[3] = (byte) 0x00;
 
-        /* cmdLeng */
-        buf[4] = 0x1A;
+        /* TODO: data bytes length calculation */
+        buf[4] = (byte) cmdLen;
 
         Util.arrayCopyNonAtomic(cmd, (short) 0, buf, (short) 5, cmdLen);
         return new CommandAPDU(buf, 0, cmdLen + 5);
@@ -74,6 +74,6 @@ public class FiraTest {
                        0x02, (byte) 0x80, 0x00 }; // Sample BER format OID
 
         CommandAPDU apdu = encodeApdu((byte) INS_SELECT_ADF, sel, (short) sel.length);
-        //ResponseAPDU response = simulator.transmitCommand(apdu);
+        ResponseAPDU response = simulator.transmitCommand(apdu);
     }
 }
