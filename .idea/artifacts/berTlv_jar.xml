@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="berTlv:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/berTlv_jar</output-path>
+    <root id="archive" name="berTlv.jar">
+      <element id="module-output" name="berTlv" />
+    </root>
+  </artifact>
+</component>
