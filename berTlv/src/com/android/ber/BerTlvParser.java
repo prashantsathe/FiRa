@@ -31,8 +31,7 @@ public class BerTlvParser {
         return tlvs;
     }
 
-    private short CountNumberOfTags(byte[] buffer, short offset, short length)
-    {
+    private short CountNumberOfTags(byte[] buffer, short offset, short length) {
         short count = 0, tOffset = offset, tagByteCnt = 0, lengthByteCnt = 0, valueCount = 0;
 
         while (tOffset < (length + offset)) {

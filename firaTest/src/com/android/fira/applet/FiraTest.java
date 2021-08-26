@@ -2,6 +2,7 @@ package com.android.fira.applet;
 
 import com.android.ber.BerTlv;
 
+import com.android.ber.BerTlvBuilder;
 import com.licel.jcardsim.smartcardio.CardSimulator;
 import com.licel.jcardsim.utils.AIDUtil;
 import javacard.framework.AID;
@@ -13,19 +14,14 @@ import javax.smartcardio.ResponseAPDU;
 
 public class FiraTest {
 
-    private static final byte INS_SET_VERSION_PATCHLEVEL_CMD = 9;
     private static final byte INS_SELECT_ADF = (byte) 165; //0xA5;
-    private static final int OS_VERSION = 1;
-    private static final int OS_PATCH_LEVEL = 1;
-    private static final int VENDOR_PATCH_LEVEL = 1;
 
     private CardSimulator simulator;
+    private BerTlvBuilder berTlvBuilder;
 
     public FiraTest() {
-        //cryptoProvider = new KMJCardSimulator();
         simulator = new CardSimulator();
-        //encoder = new KMEncoder();
-        //decoder = new KMDecoder();
+        berTlvBuilder = new BerTlvBuilder();
     }
 
     private void init() {
@@ -35,7 +31,6 @@ public class FiraTest {
 
         // Select applet
         simulator.selectApplet(appletAID);
-
     }
 
     private CommandAPDU encodeApdu(byte ins, byte[] cmd, short cmdLen) {
@@ -55,8 +50,20 @@ public class FiraTest {
     @Test
     public void TestSelectADF_PrimitiveDataObject() {
         init();
+
+        /* Test bytes to compare
         byte sel[] = { 0x4F, 0x0B, (byte) 0xA0, 0x00, 0x00, 0x03, 0x08, 0x00, 0x00, 0x10, 0x00, 0x01, 0x00,
                        0x4F, 0x0B, (byte) 0xA0, 0x00, 0x00, 0x03, 0x08, 0x00, 0x00, 0x10, 0x00, 0x01, 0x01}; // Sample BER format OID
+        */
+        byte[] sel = new byte[26];
+
+        byte[] tag = {0x4f};
+        byte[] tlv1 = {(byte) 0xA0, 0x00, 0x00, 0x03, 0x08, 0x00, 0x00, 0x10, 0x00, 0x01, 0x00};
+        byte[] tlv2 = {(byte) 0xA0, 0x00, 0x00, 0x03, 0x08, 0x00, 0x00, 0x10, 0x00, 0x01, 0x01};
+        short offset = 0;
+
+        offset = berTlvBuilder.AddTlv(sel, tag, tlv1, offset);
+        offset = berTlvBuilder.AddTlv(sel, tag, tlv2, offset);
 
         CommandAPDU apdu = encodeApdu((byte) INS_SELECT_ADF, sel, (short) sel.length);
         ResponseAPDU response = simulator.transmitCommand(apdu);
@@ -66,14 +73,34 @@ public class FiraTest {
     @Test
     public void TestSelectADF_ConstructedDataObject() {
         init();
-        byte sel[] = { 0x61, 0x39, 0x4F, 0x0B, (byte) 0xA0, 0x00, 0x00, 0x03, 0x08, 0x00, 0x00, 0x10, 0x00,
+        /* Test bytes to compare */
+        byte sel1[] = { 0x61, 0x39, 0x4F, 0x0B, (byte) 0xA0, 0x00, 0x00, 0x03, 0x08, 0x00, 0x00, 0x10, 0x00,
                        0x01, 0x00, 0x79, 0x07, 0x4F, 0x05, (byte) 0xA0, 0x00, 0x00, 0x03, 0x08, 0x50, 0x0E,
                        0x49, 0x44, 0x2D, 0x4F, 0x6E, 0x65, 0x20, 0x50, 0x49, 0x56, 0x20, 0x42, 0x49, 0x4F,
                        0x5F, 0x50, 0x10, 0x77, 0x77, 0x77, 0x2E, 0x6F, 0x62, 0x65, 0x72, 0x74, 0x68, 0x75,
                        0x72, 0x2E, 0x63, 0x6F, 0x6D, 0x7F, 0x66, 0x08, 0x02, 0x02, (byte) 0x80, 0x00, 0x02,
                        0x02, (byte) 0x80, 0x00 }; // Sample BER format OID
 
-        CommandAPDU apdu = encodeApdu((byte) INS_SELECT_ADF, sel, (short) sel.length);
+        byte[] sel = new byte[70];
+        byte[] tlv1 = {(byte) 0xA0, 0x00, 0x00, 0x03, 0x08, 0x00, 0x00, 0x10, 0x00, 0x01, 0x00};
+        byte[] tag1 = {0x4f};
+        byte[] tlv2 = {(byte) 0xA0, 0x00, 0x00, 0x03, 0x08};
+        byte[] tag2 = {0x45};
+        byte[] tlv3 = {0x49, 0x44, 0x2D, 0x4F, 0x6E, 0x65, 0x20, 0x50, 0x49, 0x56, 0x20, 0x42, 0x49, 0x4F};
+        byte[] tag3 = {0x50};
+        byte[] tlv4 = {0x77, 0x77, 0x77, 0x2E, 0x6F, 0x62, 0x65, 0x72, 0x74, 0x68, 0x75, 0x72, 0x2E,
+                       0x63, 0x6F, 0x6D};
+        byte[] tag4 = {0x5f, 0x50};
+        byte[] tlv5_6 = {(byte) 0x80, 0x00};
+        byte[] tag5_6 = {0x7F, 0x66};
+
+        { /* Create complex Data Object*/
+            short offset = 0;
+            // building constructed data object Keep
+            offset = berTlvBuilder.AddTlv(sel, tag1, tlv1, offset);
+            offset = berTlvBuilder.AddTlv(sel, tag2, tlv2, offset);
+        }
+        CommandAPDU apdu = encodeApdu((byte) INS_SELECT_ADF, sel1, (short) sel.length);
         ResponseAPDU response = simulator.transmitCommand(apdu);
     }
 }
