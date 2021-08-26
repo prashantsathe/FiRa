@@ -84,21 +84,46 @@ public class FiraTest {
         byte[] sel = new byte[70];
         byte[] tlv1 = {(byte) 0xA0, 0x00, 0x00, 0x03, 0x08, 0x00, 0x00, 0x10, 0x00, 0x01, 0x00};
         byte[] tag1 = {0x4f};
+        byte[] tmpl1 = {0x61};
         byte[] tlv2 = {(byte) 0xA0, 0x00, 0x00, 0x03, 0x08};
-        byte[] tag2 = {0x45};
+        byte[] tag2 = {0x4f};
+        byte[] tmpl2 = {0x79};
         byte[] tlv3 = {0x49, 0x44, 0x2D, 0x4F, 0x6E, 0x65, 0x20, 0x50, 0x49, 0x56, 0x20, 0x42, 0x49, 0x4F};
         byte[] tag3 = {0x50};
         byte[] tlv4 = {0x77, 0x77, 0x77, 0x2E, 0x6F, 0x62, 0x65, 0x72, 0x74, 0x68, 0x75, 0x72, 0x2E,
                        0x63, 0x6F, 0x6D};
         byte[] tag4 = {0x5f, 0x50};
         byte[] tlv5_6 = {(byte) 0x80, 0x00};
-        byte[] tag5_6 = {0x7F, 0x66};
+        byte[] tag5_6 = {0x02};
+        byte[] tmpl5_6 = {0x7f, 0x66};
 
         { /* Create complex Data Object*/
             short offset = 0;
             // building constructed data object Keep
-            offset = berTlvBuilder.AddTlv(sel, tag1, tlv1, offset);
-            offset = berTlvBuilder.AddTlv(sel, tag2, tlv2, offset);
+            //berTlvBuilder.startTemplate();
+
+            berTlvBuilder.StartCOTag(offset);
+            {
+                offset = berTlvBuilder.AddTlv(sel, tag1, tlv1, offset);
+
+                berTlvBuilder.StartCOTag(offset);
+                {
+                    offset = berTlvBuilder.AddTlv(sel, tag2, tlv2, offset);
+                }
+                offset = berTlvBuilder.EndCOTag(sel, tmpl2, offset);
+
+                offset = berTlvBuilder.AddTlv(sel, tag3, tlv3, offset);
+                offset = berTlvBuilder.AddTlv(sel, tag4, tlv4, offset);
+            }
+            offset = berTlvBuilder.EndCOTag(sel, tmpl1, offset);
+
+            berTlvBuilder.StartCOTag(offset);
+            {
+                offset = berTlvBuilder.AddTlv(sel, tag5_6, tlv5_6, offset);
+                offset = berTlvBuilder.AddTlv(sel, tag5_6, tlv5_6, offset);
+            }
+            offset = berTlvBuilder.EndCOTag(sel, tmpl5_6, offset);
+
         }
         CommandAPDU apdu = encodeApdu((byte) INS_SELECT_ADF, sel1, (short) sel.length);
         ResponseAPDU response = simulator.transmitCommand(apdu);

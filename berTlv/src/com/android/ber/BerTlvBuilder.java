@@ -2,7 +2,15 @@ package com.android.ber;
 
 public class BerTlvBuilder {
 
+    private BerStack berStack;
+    private final short DEFAULT_STACK_SIZE = 20;
+
     public BerTlvBuilder() {
+        berStack = new BerStack(DEFAULT_STACK_SIZE);
+    }
+
+    public BerTlvBuilder(short stackSize) {
+        berStack = new BerStack(stackSize);
     }
 
     public short AddTlv(byte[] buffer, byte[] tag, byte[] HexLength, short offset) {
@@ -24,25 +32,33 @@ public class BerTlvBuilder {
         return rOffset;
     }
 
-    public short AddTemplateTag(byte[] buffer, byte[] tag, short startOffset, short offset) {
+    public short EndCOTag(byte[] buffer, byte[] tag, short offset) {
         short rOffset = offset;
-        short lengthBytesCnt = GetLengthByteCnt(offset);
+        short startOffset = berStack.pop();
+        short lengthBytesCnt = GetLengthByteCnt((short) (offset - startOffset));
 
         /* Return if buffer overflow is going to happen */
         if ((rOffset + tag.length) > buffer.length) return offset;
 
-        System.arraycopy(buffer, startOffset, buffer, tag.length + lengthBytesCnt, offset);
+        System.arraycopy(buffer, startOffset, buffer, startOffset + tag.length + lengthBytesCnt,
+                                                        offset - startOffset);
         rOffset += (tag.length + lengthBytesCnt);
 
-        for (short i = startOffset; i < tag.length ; i++) {
-            buffer[i] = tag[i];
+        for (short i = startOffset, j =0 ; i < (tag.length + startOffset) ; i++) {
+            buffer[i] = tag[j++];
         }
 
-        rOffset += FillLength(buffer, offset /* Actual length */, (short) tag.length);
+                                        /* Actual length */
+        FillLength(buffer, (short) (offset - startOffset), (short) (startOffset + tag.length));
 
         return rOffset;
     }
 
+    public void StartCOTag(short offset) {
+        berStack.push(offset);
+    }
+
+    /* return number of bytes required for length*/
     private short FillLength(byte[] buffer, short length, short offset) {
         short byteCnt = 1;
 
