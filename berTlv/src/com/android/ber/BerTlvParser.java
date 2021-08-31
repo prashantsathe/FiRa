@@ -1,34 +1,36 @@
 package com.android.ber;
 
-import javacard.framework.JCSystem;
-
 public class BerTlvParser {
+    private BerArrayLinkList tlvsLL;
+    private short gOffset;
 
     public BerTlvParser() {
-
+        /* TODO: null check */
+        tlvsLL = new BerArrayLinkList();
+        gOffset = 0;
     }
 
-    public BerLinkList parser(byte[] buffer, short offset, short length)
+    public BerArrayLinkList Parser(byte[] buffer, short offset, short length)
     {
         if ((CountNumberOfTags(buffer, offset, length) == 0) || length == 0) return null;
 
-        /* TODO: null check */
-        BerLinkList tlvs = new BerLinkList();
-
         short tOffset = offset;
+        short startLLOffset = 2;
+        tlvsLL.AllocateLinkList();
+
         /* TODO:- while(offset < length - 1) or max 100, release library has max 100 */
         for (short i = 0; i < 100 ; i++) {
-            BerTlv tlv = GetTlvfrom(buffer, tOffset, (short) (length -  tOffset));
-            tlvs.AddToBottom(tlv);
+            short berTlvPtr = GetTlvFrom(buffer, tOffset, (short) (length -  tOffset), false);
+            tlvsLL.AddToBottom(berTlvPtr, startLLOffset);
 
-            if(tlv.offset >= offset + length) {
+            if(gOffset >= offset + length) {
                 break;
             }
 
-            tOffset = tlv.offset;
+            tOffset = gOffset;
         }
 
-        return tlvs;
+        return tlvsLL;
     }
 
     private short CountNumberOfTags(byte[] buffer, short offset, short length) {
@@ -43,31 +45,6 @@ public class BerTlvParser {
             count++;
         }
         return count;
-    }
-
-    private byte[] createTag(byte[] buffer, short offset, short len) {
-        byte[] tag = JCSystem.makeTransientByteArray(len, JCSystem.CLEAR_ON_DESELECT);
-
-        /* Copy tags */
-        System.arraycopy(buffer, offset, tag, 0, len);
-        return tag;
-    }
-
-    private byte[] createLength(byte[] buffer, short offset) {
-        short lengthByteCount = getTotalLengthBytesCount(buffer, offset);
-        byte[] lengthPtr = JCSystem.makeTransientByteArray(lengthByteCount, JCSystem.CLEAR_ON_DESELECT);
-
-        /* Copy length */
-        System.arraycopy(buffer, offset, lengthPtr, 0, lengthByteCount);
-        return lengthPtr;
-    }
-
-    private byte[] createValue(byte[] buffer, short offset, short len) {
-        byte[] value = JCSystem.makeTransientByteArray(len, JCSystem.CLEAR_ON_DESELECT);
-
-        /* Copy Value */
-        System.arraycopy(buffer, offset, value, 0, len);
-        return value;
     }
 
     private short getTotalLengthBytesCount(byte[] buffer, short offset) {
@@ -115,10 +92,9 @@ public class BerTlvParser {
         }
     }
 
-    private BerTlv GetTlvfrom(byte[] buffer, short offset, short len) {
+    private short GetTlvFrom(byte[] buffer, short offset, short len, boolean cObject) {
 
-        /* TODO:- do it using transient memory & error check*/
-        BerTlv tlv = new BerTlv();
+        short tlvPtrOffset = tlvsLL.AllocateBerTlv(cObject);
 
         if (offset + len > buffer.length) {
             // TODO: throw exception
@@ -126,42 +102,43 @@ public class BerTlvParser {
 
         // Tag calculation
         short tagBytesCount   = getTotalTagBytesCount(buffer, offset);
-        tlv.berTagPtr         = createTag(buffer, offset, tagBytesCount);
+        short tagOffset       = offset;
 
         // length calculation
         short lengthBytesCount  = getTotalLengthBytesCount(buffer, (short) (offset + tagBytesCount));
-        tlv.berLengthPtr      = createLength(buffer, (short) (offset + tagBytesCount));
-        tlv.berLength         = getDataLength(buffer, (short) (offset + tagBytesCount));
+        short berLength         = getDataLength(buffer, (short) (offset + tagBytesCount));
 
         short valueOffset = (short) (offset + tagBytesCount + lengthBytesCount);
-        tlv.offset = (short) (valueOffset + tlv.berLength);
+        short finalOffset = (short) (valueOffset + berLength);
+        gOffset = finalOffset;
 
         // value calculation
-        // if Bit 5 is set its a "constructed data object"
-        if ((buffer[offset] & 0x20) == 0x20 ) {
-            /* TODO:- do it using transient memory & error check*/
-            tlv.berLinkList = new BerLinkList();
-            tlv.berValuePtr = null;
-            AddSublistBerTlv(buffer, valueOffset, tlv.berLength, tlv.berLinkList);
+        // if Bit 5 is set it's a "constructed data object"
+        if ((buffer[offset] & 0x20) == 0x20) {
+            AddSubListBerTlv(buffer, valueOffset, berLength, tlvPtrOffset);
         } else {
-            // TODO: remove 2 time calls to "getTotalLengthBytesCount"
-            tlv.berValuePtr  = createValue(buffer, valueOffset, tlv.berLength);
-            tlv.berLinkList = null;
+            tlvsLL.CreateBerTlv(tagOffset, tagBytesCount, tlvPtrOffset);
         }
 
-        return tlv;
+        gOffset = finalOffset;
+        return tlvPtrOffset;
     }
 
-    private void AddSublistBerTlv(byte[] buffer, short offset, short valueLength, BerLinkList linkList) {
+    private short AddSubListBerTlv(byte[] buffer, short offset, short valueLength, short tlvParentOffset) {
         short startPosition = offset;
         short len = valueLength;
+        short retOffset = -1;
 
         while (startPosition < offset + valueLength) {
-            BerTlv tlv = GetTlvfrom(buffer, startPosition, len);
-            linkList.AddToBottom(tlv);
+            short berTlvPtr = GetTlvFrom(buffer, startPosition, len, retOffset == -1);
+            tlvsLL.AddToBottom(berTlvPtr, (short) (offset + 2));
 
-            startPosition = tlv.offset;
+            startPosition = gOffset;
             len           = (short) ((offset + valueLength) - startPosition);
+            if (retOffset == -1)
+                retOffset = berTlvPtr;
         }
+
+        return retOffset;
     }
 }

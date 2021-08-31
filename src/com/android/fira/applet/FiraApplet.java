@@ -1,7 +1,6 @@
 package com.android.fira.applet;
 
-import com.android.ber.BerLinkList;
-import com.android.ber.BerList;
+import com.android.ber.BerArrayLinkList;
 import com.android.ber.BerTlvParser;
 import javacard.framework.*;
 
@@ -54,7 +53,7 @@ public class FiraApplet extends Applet {
 
     private void ProcessSelectADF(byte[] buffer, short offSet, short length) {
         BerTlvParser parser = new BerTlvParser();
-        BerLinkList berList = parser.parser(buffer, offSet, length);
+        BerArrayLinkList berList = parser.Parser(buffer, offSet, length);
 
         /*TODO:- return response*/
     }

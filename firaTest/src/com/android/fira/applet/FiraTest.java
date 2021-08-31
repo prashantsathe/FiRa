@@ -1,7 +1,5 @@
 package com.android.fira.applet;
 
-import com.android.ber.BerTlv;
-
 import com.android.ber.BerTlvBuilder;
 import com.licel.jcardsim.smartcardio.CardSimulator;
 import com.licel.jcardsim.utils.AIDUtil;
@@ -100,9 +98,6 @@ public class FiraTest {
 
         { /* Create complex Data Object*/
             short offset = 0;
-            // building constructed data object Keep
-            //berTlvBuilder.startTemplate();
-
             berTlvBuilder.StartCOTag(offset);
             {
                 offset = berTlvBuilder.AddTlv(sel, tag1, tlv1, offset);
@@ -126,6 +121,32 @@ public class FiraTest {
             offset = berTlvBuilder.EndCOTag(sel, tmpl5_6, offset);
 
         }
+        CommandAPDU apdu = encodeApdu((byte) INS_SELECT_ADF, sel, (short) sel.length);
+        ResponseAPDU response = simulator.transmitCommand(apdu);
+    }
+
+    @Test
+    public void TestCustomADFCommand() {
+        init();
+
+        byte[] sel = new byte[70];
+        byte[] tlv1 = {(byte) 0xA0, 0x00, 0x00, 0x03, 0x08, 0x00, 0x00, 0x10, 0x00, 0x01, 0x00}; // OIDs
+        byte[] tlv2 = {(byte) 0xA0, 0x01, 0x02}; // Instance UIDS
+        // UWB Controlee info
+        byte[] tlv3 = {0x01, 0x02}; //Version
+        {
+            byte[] tlv3_1 = {0x01, 0x02}; //Version
+        }
+        byte[] tlv4 = {(byte) 0xA0, 0x01, 0x03}; // UWB session data
+        byte[] tlv5 = {(byte) 0xA0, 0x01, 0x04}; // Fira SC credential
+
+        short offset = 0;
+        offset = berTlvBuilder.AddTlv(sel, Constant.OID, tlv1, offset);
+        offset = berTlvBuilder.AddTlv(sel, Constant.INSTANCE_UID, tlv2, offset);
+        //offset = berTlvBuilder.AddTlv(sel, Constant., tlv3, offset);
+        offset = berTlvBuilder.AddTlv(sel, Constant.UWB_SESSION_DATA, tlv4, offset);
+
+
         CommandAPDU apdu = encodeApdu((byte) INS_SELECT_ADF, sel, (short) sel.length);
         ResponseAPDU response = simulator.transmitCommand(apdu);
     }
