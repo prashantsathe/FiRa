@@ -10,8 +10,7 @@ public class BerTlvParser {
         gOffset = 0;
     }
 
-    public BerArrayLinkList Parser(byte[] buffer, short offset, short length)
-    {
+    public BerArrayLinkList Parser(byte[] buffer, short offset, short length) {
         if ((CountNumberOfTags(buffer, offset, length) == 0) || length == 0) return null;
 
         short tOffset = offset;
@@ -115,28 +114,31 @@ public class BerTlvParser {
         // value calculation
         // if Bit 5 is set it's a "constructed data object"
         if ((buffer[offset] & 0x20) == 0x20) {
-            AddSubListBerTlv(buffer, valueOffset, berLength, tlvPtrOffset);
+            short newPtrSublistOffset = AddSubListBerTlv(buffer, valueOffset, berLength, tlvPtrOffset);
+            tlvsLL.CreateBerTlv(tagOffset, tagBytesCount, valueOffset, berLength, tlvPtrOffset, newPtrSublistOffset);
+            gOffset = finalOffset;
         } else {
-            tlvsLL.CreateBerTlv(tagOffset, tagBytesCount, tlvPtrOffset);
+            tlvsLL.CreateBerTlv(tagOffset, tagBytesCount, valueOffset, berLength, tlvPtrOffset, (short) -1);
         }
 
-        gOffset = finalOffset;
         return tlvPtrOffset;
     }
 
     private short AddSubListBerTlv(byte[] buffer, short offset, short valueLength, short tlvParentOffset) {
         short startPosition = offset;
         short len = valueLength;
-        short retOffset = -1;
+        short retOffset = -1; // represent First offset of list
 
         while (startPosition < offset + valueLength) {
             short berTlvPtr = GetTlvFrom(buffer, startPosition, len, retOffset == -1);
-            tlvsLL.AddToBottom(berTlvPtr, (short) (offset + 2));
 
-            startPosition = gOffset;
-            len           = (short) ((offset + valueLength) - startPosition);
             if (retOffset == -1)
                 retOffset = berTlvPtr;
+
+            tlvsLL.AddToBottom(berTlvPtr, retOffset);
+            startPosition = gOffset;
+            len           = (short) ((offset + valueLength) - startPosition);
+
         }
 
         return retOffset;

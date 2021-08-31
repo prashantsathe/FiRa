@@ -55,6 +55,7 @@ public class FiraApplet extends Applet {
         BerTlvParser parser = new BerTlvParser();
         BerArrayLinkList berList = parser.Parser(buffer, offSet, length);
 
+        berList.PrintAllTags(buffer);
         /*TODO:- return response*/
     }
 
