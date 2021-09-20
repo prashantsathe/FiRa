@@ -5,23 +5,19 @@ import com.android.ber.BerTlvParser;
 import javacard.framework.*;
 import javacardx.apdu.ExtendedLength;
 
-
+@SuppressWarnings("FieldCanBeLocal")
 public class FiraApplet extends Applet implements ExtendedLength {
 
     private static final short KM_HAL_VERSION = (short) 0x4000;
     private static final byte CLA_ISO7816_NO_SM_NO_CHAN = (byte) 0x80;
 
-    // Buffer constants.
-    private static final short BUF_START_OFFSET = 0;
-    private static final short BUF_LEN_OFFSET = 2;
-
     protected static byte[] mHeapBuffer;
     protected static short m_ExtBufLength;
 
-    private ADFManager mAdfManager;
-    private SessionManager mSessionManager;
-    private Repository mRepository;
-    private CryptoManager mCryptoManager;
+    private static ADFManager mAdfManager;
+    private static SessionManager mSessionManager;
+    private static Repository mRepository;
+    private static CryptoManager mCryptoManager;
 
     /**
      * Registers this applet.
@@ -32,15 +28,7 @@ public class FiraApplet extends Applet implements ExtendedLength {
         mCryptoManager = new CryptoManager();
         mRepository = new Repository();
         mHeapBuffer = JCSystem.makeTransientByteArray(Constant.HEAP_SIZE, JCSystem.CLEAR_ON_RESET);
-        //initializeTransientArrays();
     }
-
-//    private void initializeTransientArrays() {
-//        bufferRef = JCSystem.makeTransientObjectArray((short) 1, JCSystem.CLEAR_ON_RESET);
-//        bufferProp = JCSystem.makeTransientShortArray((short) 4, JCSystem.CLEAR_ON_RESET);
-//        bufferProp[BUF_START_OFFSET] = 0;
-//        bufferProp[BUF_LEN_OFFSET] = 0;
-//    }
 
     public static void install(byte[] bArray, short bOffset, byte bLength) {
         new FiraApplet().register();
@@ -85,7 +73,7 @@ public class FiraApplet extends Applet implements ExtendedLength {
         m_ExtBufLength = apdu.getIncomingLength();
         short index = 0;
 
-        while (revLen > 0 && (short) index  < m_ExtBufLength) {
+        while (revLen > 0 && index  < m_ExtBufLength) {
             Util.arrayCopyNonAtomic(srcBuffer, srcOffset, mHeapBuffer, index, revLen);
             index += revLen;
             revLen = apdu.receiveBytes(srcOffset);
@@ -97,14 +85,18 @@ public class FiraApplet extends Applet implements ExtendedLength {
         receiveIncoming(apdu);
 
         if (Constant.ADF_PACS_PROFILE_SIZE != mCryptoManager.aesCBC128NoPadDecrypt(mHeapBuffer,
-                (short) 0, m_ExtBufLength, adfBuff, (short) 0)) {
+                        mRepository.getADFBufferOffset(), m_ExtBufLength, adfBuff, (short) 0)) {
             /*TODO:- */
             return;
         }
 
         if (mAdfManager.parser(adfBuff, (short)0, m_ExtBufLength)) {
-
+            /*TODO:- */
+            return;
         }
+
+        mRepository.setCurrentADF();
+
         /* TODO:- return response */
     }
 
@@ -122,6 +114,18 @@ public class FiraApplet extends Applet implements ExtendedLength {
         /*TODO:- return response*/
     }
 
+    private void processSelect(APDU apdu) {
+        byte[] apduBuffer = apdu.getBuffer();
+        short revLen = apdu.setIncomingAndReceive();
+        short srcOffset = apdu.getOffsetCdata();
+        short dataLen = apdu.getIncomingLength();
+        // check dataLen == revLen ??
+        if (!mRepository.verifyAID(apduBuffer, srcOffset, dataLen)) {
+            /*TODO:- return response*/
+            return;
+        }
+    }
+
     @Override
     public void process(APDU apdu) {
         /* SELECT */
@@ -136,6 +140,8 @@ public class FiraApplet extends Applet implements ExtendedLength {
         byte apduIns = apduBuffer[ISO7816.OFFSET_INS];
 
         switch (apduIns) {
+            case Constant.INS_SELECT:
+                processSelect(apdu);
             case Constant.INS_SELECT_ADF:
                 processSelectADF(apdu);
                 break;

@@ -3,16 +3,17 @@ package com.android.fira.applet;
 import com.android.ber.BerArrayLinkList;
 import com.android.ber.BerTlvParser;
 
+@SuppressWarnings("FieldCanBeLocal")
 public class ADFManager {
-    private BerTlvParser berTlvParser;
+    private BerTlvParser mBerTlvParser;
 
     public ADFManager() {
-        berTlvParser = new BerTlvParser();
+        mBerTlvParser = new BerTlvParser();
     }
 
     /* Validate the ADF structure */
     public boolean parser(byte[] buffer, short offSet, short length) {
-        BerArrayLinkList berList = berTlvParser.parser(buffer, offSet, length);
+        BerArrayLinkList berList = mBerTlvParser.parser(buffer, offSet, length);
         berList.printAllTags(buffer);
 
         /* Error message and error response */

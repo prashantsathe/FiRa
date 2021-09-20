@@ -30,9 +30,8 @@ import javacard.framework.JCSystem;
  | (Offset) | (Offset) |            |              |              |                 |                       |            |                        |                       |
  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-
  ******************************************************************************/
-
+@SuppressWarnings("FieldCanBeLocal")
 public class BerArrayLinkList {
     private short size;
     private short maxSize;

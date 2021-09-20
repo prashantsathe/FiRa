@@ -29,9 +29,7 @@ public class CryptoManager {
         // create Credential Storage Key & Set Key
         mRandomData.nextBytes(mRandomStorageKey, (short) 0, Constant.AES_KEY_SIZE);
 
-        // dummy test
-        //Util.arrayFillNonAtomic(mRandomStorageKey, (short) 0, Constant.AES_KEY_SIZE, (byte) 0x02);
-
+        // Set AES key
         mAesKey.setKey(mRandomStorageKey, (short) 0);
     }
 

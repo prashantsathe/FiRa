@@ -126,9 +126,10 @@ public class Constant {
         }
     }
 
-    /* INS commands*/
+    /* INS commands */
+    public static final byte INS_SELECT = (byte) 0xA4;
     public static final byte INS_SELECT_ADF = (byte) 0xA5; //0xA5;
-    public static final byte INS_LOAD_ADF = (byte) 0xA4; // Custom command
+    public static final byte INS_LOAD_ADF = (byte) 0xA6; // Custom command
 
     /* AES constants */
     public static final short AES_BLOCK_SIZE = 16;
