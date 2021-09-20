@@ -10,8 +10,8 @@ public class BerTlvParser {
         gOffset = 0;
     }
 
-    public BerArrayLinkList Parser(byte[] buffer, short offset, short length) {
-        if ((CountNumberOfTags(buffer, offset, length) == 0) || length == 0) return null;
+    public BerArrayLinkList parser(byte[] buffer, short offset, short length) {
+        if ((countNumberOfTags(buffer, offset, length) == 0) || length == 0) return null;
 
         short tOffset = offset;
         short startLLOffset = 2;
@@ -19,8 +19,8 @@ public class BerTlvParser {
 
         /* TODO:- while(offset < length - 1) or max 100, release library has max 100 */
         for (short i = 0; i < 100 ; i++) {
-            short berTlvPtr = GetTlvFrom(buffer, tOffset, (short) (length -  tOffset), false);
-            tlvsLL.AddToBottom(berTlvPtr, startLLOffset);
+            short berTlvPtr = getTlvFrom(buffer, tOffset, (short) (length -  tOffset), false);
+            tlvsLL.addToBottom(berTlvPtr, startLLOffset);
 
             if(gOffset >= offset + length) {
                 break;
@@ -32,7 +32,7 @@ public class BerTlvParser {
         return tlvsLL;
     }
 
-    private short CountNumberOfTags(byte[] buffer, short offset, short length) {
+    private short countNumberOfTags(byte[] buffer, short offset, short length) {
         short count = 0, tOffset = offset, tagByteCnt = 0, lengthByteCnt = 0, valueCount = 0;
 
         while (tOffset < (length + offset)) {
@@ -91,9 +91,9 @@ public class BerTlvParser {
         }
     }
 
-    private short GetTlvFrom(byte[] buffer, short offset, short len, boolean cObject) {
+    private short getTlvFrom(byte[] buffer, short offset, short len, boolean cObject) {
 
-        short tlvPtrOffset = tlvsLL.AllocateBerTlv(cObject);
+        short tlvPtrOffset = tlvsLL.allocateBerTlv(cObject);
 
         if (offset + len > buffer.length) {
             // TODO: throw exception
@@ -114,28 +114,28 @@ public class BerTlvParser {
         // value calculation
         // if Bit 5 is set it's a "constructed data object"
         if ((buffer[offset] & 0x20) == 0x20) {
-            short newPtrSublistOffset = AddSubListBerTlv(buffer, valueOffset, berLength, tlvPtrOffset);
-            tlvsLL.CreateBerTlv(tagOffset, tagBytesCount, valueOffset, berLength, tlvPtrOffset, newPtrSublistOffset);
+            short newPtrSublistOffset = addSubListBerTlv(buffer, valueOffset, berLength, tlvPtrOffset);
+            tlvsLL.createBerTlv(tagOffset, tagBytesCount, valueOffset, berLength, tlvPtrOffset, newPtrSublistOffset);
             gOffset = finalOffset;
         } else {
-            tlvsLL.CreateBerTlv(tagOffset, tagBytesCount, valueOffset, berLength, tlvPtrOffset, (short) -1);
+            tlvsLL.createBerTlv(tagOffset, tagBytesCount, valueOffset, berLength, tlvPtrOffset, (short) -1);
         }
 
         return tlvPtrOffset;
     }
 
-    private short AddSubListBerTlv(byte[] buffer, short offset, short valueLength, short tlvParentOffset) {
+    private short addSubListBerTlv(byte[] buffer, short offset, short valueLength, short tlvParentOffset) {
         short startPosition = offset;
         short len = valueLength;
         short retOffset = -1; // represent First offset of list
 
         while (startPosition < offset + valueLength) {
-            short berTlvPtr = GetTlvFrom(buffer, startPosition, len, retOffset == -1);
+            short berTlvPtr = getTlvFrom(buffer, startPosition, len, retOffset == -1);
 
             if (retOffset == -1)
                 retOffset = berTlvPtr;
 
-            tlvsLL.AddToBottom(berTlvPtr, retOffset);
+            tlvsLL.addToBottom(berTlvPtr, retOffset);
             startPosition = gOffset;
             len           = (short) ((offset + valueLength) - startPosition);
 

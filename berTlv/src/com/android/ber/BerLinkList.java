@@ -10,7 +10,7 @@ public class BerLinkList {
         size = 0;
     }
 
-    public void AddToTop(BerTlv tlv) {
+    public void addToTop(BerTlv tlv) {
         /* TODO: memory allocation */
         ListObj obj = new ListObj();
         obj.tlv = tlv;
@@ -26,7 +26,7 @@ public class BerLinkList {
         size++;
     }
 
-    public void AddToBottom(BerTlv tlv) {
+    public void addToBottom(BerTlv tlv) {
         /* TODO: memory allocation */
         ListObj obj = new ListObj();
         obj.tlv = tlv;
@@ -42,7 +42,7 @@ public class BerLinkList {
         size++;
     }
 
-    public short SizeOfList() {
+    public short sizeOfList() {
         return size;
     }
 

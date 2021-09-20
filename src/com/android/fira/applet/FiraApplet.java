@@ -3,34 +3,59 @@ package com.android.fira.applet;
 import com.android.ber.BerArrayLinkList;
 import com.android.ber.BerTlvParser;
 import javacard.framework.*;
+import javacardx.apdu.ExtendedLength;
 
 
-public class FiraApplet extends Applet {
+public class FiraApplet extends Applet implements ExtendedLength {
 
     private static final short KM_HAL_VERSION = (short) 0x4000;
     private static final byte CLA_ISO7816_NO_SM_NO_CHAN = (byte) 0x80;
-    private static final byte INS_SELECT_ADF = (byte) 165; //0xA5;
+
+    // Buffer constants.
+    private static final short BUF_START_OFFSET = 0;
+    private static final short BUF_LEN_OFFSET = 2;
+
+    protected static byte[] mHeapBuffer;
+    protected static short m_ExtBufLength;
+
+    private ADFManager mAdfManager;
+    private SessionManager mSessionManager;
+    private Repository mRepository;
+    private CryptoManager mCryptoManager;
 
     /**
      * Registers this applet.
      */
     protected FiraApplet() {
-
-//        seProvider = seImpl;
-//        boolean isUpgrading = seImpl.isUpgrading();
-//        repository = new KMRepository(isUpgrading);
-//        initializeTransientArrays();
-//        if (!isUpgrading) {
-//            keymasterState = KMKeymasterApplet.INIT_STATE;
-//            seProvider.createMasterKey((short) (KMRepository.MASTER_KEY_SIZE * 8));
-//        }
-//          KMType.initialize();
-//        encoder = new KMEncoder();
-//        decoder = new KMDecoder();
+        mAdfManager = new ADFManager();
+        mSessionManager = new SessionManager();
+        mCryptoManager = new CryptoManager();
+        mRepository = new Repository();
+        mHeapBuffer = JCSystem.makeTransientByteArray(Constant.HEAP_SIZE, JCSystem.CLEAR_ON_RESET);
+        //initializeTransientArrays();
     }
+
+//    private void initializeTransientArrays() {
+//        bufferRef = JCSystem.makeTransientObjectArray((short) 1, JCSystem.CLEAR_ON_RESET);
+//        bufferProp = JCSystem.makeTransientShortArray((short) 4, JCSystem.CLEAR_ON_RESET);
+//        bufferProp[BUF_START_OFFSET] = 0;
+//        bufferProp[BUF_LEN_OFFSET] = 0;
+//    }
 
     public static void install(byte[] bArray, short bOffset, byte bLength) {
         new FiraApplet().register();
+    }
+
+    @Override
+    public void deselect() {
+    }
+
+    /**
+     * brief This method is called whenever the applet is being selected.
+     */
+    @Override
+    public boolean select() {
+        return true;
     }
 
     protected void validateApduHeader(APDU apdu) {
@@ -50,36 +75,73 @@ public class FiraApplet extends Applet {
         }
     }
 
+    /**
+     * Receive extended data
+     */
+    public static void receiveIncoming(APDU apdu) {
+        byte[] srcBuffer = apdu.getBuffer();
+        short revLen = apdu.setIncomingAndReceive();
+        short srcOffset = apdu.getOffsetCdata();
+        m_ExtBufLength = apdu.getIncomingLength();
+        short index = 0;
 
-    private void ProcessSelectADF(byte[] buffer, short offSet, short length) {
-        BerTlvParser parser = new BerTlvParser();
-        BerArrayLinkList berList = parser.Parser(buffer, offSet, length);
+        while (revLen > 0 && (short) index  < m_ExtBufLength) {
+            Util.arrayCopyNonAtomic(srcBuffer, srcOffset, mHeapBuffer, index, revLen);
+            index += revLen;
+            revLen = apdu.receiveBytes(srcOffset);
+        }
+    }
 
-        berList.PrintAllTags(buffer);
+    private void processLoadADF(APDU apdu) {
+        byte[] adfBuff = mRepository.getADFBuffer();
+        receiveIncoming(apdu);
+
+        if (Constant.ADF_PACS_PROFILE_SIZE != mCryptoManager.aesCBC128NoPadDecrypt(mHeapBuffer,
+                (short) 0, m_ExtBufLength, adfBuff, (short) 0)) {
+            /*TODO:- */
+            return;
+        }
+
+        if (mAdfManager.parser(adfBuff, (short)0, m_ExtBufLength)) {
+
+        }
+        /* TODO:- return response */
+    }
+
+    private void processSelectADF(APDU apdu) {
+        byte[] apduBuffer = apdu.getBuffer();
+        short revLen = apdu.setIncomingAndReceive();
+        short srcOffset = apdu.getOffsetCdata();
+        short dataLen = apdu.getIncomingLength();
+        // check dataLen == revLen ??
+
+        if (mAdfManager.parser(apduBuffer, srcOffset, revLen)) {
+
+        }
+
         /*TODO:- return response*/
     }
 
     @Override
     public void process(APDU apdu) {
-
-        /* NOTE: This is a test function to verify BER parser/builder */
-        /* SELECT ins */
+        /* SELECT */
         if (apdu.isISOInterindustryCLA()) {
             if (selectingApplet()) {
                 return;
             }
         }
 
-        /* SELECT_ADF ins*/
         validateApduHeader(apdu);
         byte[] apduBuffer = apdu.getBuffer();
         byte apduIns = apduBuffer[ISO7816.OFFSET_INS];
-        short dataLen = (short) apduBuffer[4];
 
         switch (apduIns) {
-            case INS_SELECT_ADF:
-                ProcessSelectADF(apduBuffer, (short) 5, dataLen);
-            break;
+            case Constant.INS_SELECT_ADF:
+                processSelectADF(apdu);
+                break;
+            case Constant.INS_LOAD_ADF:
+                processLoadADF(apdu);
+                break;
         }
     }
 }
