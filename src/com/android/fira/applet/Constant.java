@@ -1,18 +1,6 @@
 package com.android.fira.applet;
 
 public class Constant {
-    /* ADF content */
-    public static final byte[] OID = {0x41};
-    public static final byte[] INSTANCE_UID = {0x41};
-    public static final byte[] UWB_CONTROLEE_INFO = {0x42};
-    public static final byte[] UWB_SESSION_DATA = {0x43};
-    public static final byte[] ACCESS_CONDITIONS = {0x44};
-    public static final byte[] ADF_PROVISIONING_CREDENTIAL = {0x45};
-    public static final byte[] FIRA_SC_CREDENTIAL = {0x46};
-    public static final byte[] EXTENDED_OPTIONS = {0x47};
-    public static final byte[] SERVICE_DATA = {0x48};
-    public static final byte[] COMMAND_ROUTING_INFORMATION = {0x49};
-
     /* UWB_CONTROLEE_INFO start */
     public static final byte[] UWB_CAPABILITY_VERSION = {(byte) 0x80};
     public static final byte[] UWB_CAPABILITIES = {(byte) 0xA3}; // Constructed Object
@@ -61,7 +49,7 @@ public class Constant {
     /* UWB_CONTROLEE_INFO end */
 
     /* UWB_SESSION_DATA start */
-    public static final byte[] UWB_SESSION_DATA_VERSION = {(byte) 0x8D};
+    public static final byte[] UWB_SESSION_DATA_VERSION = {(byte) 0x80};
     public static final byte[] SESSION_ID = {(byte) 0x81};
     public static final byte[] SUB_SESSION_ID = {(byte) 0x82};
     public static final byte[] CONFIGURATION_PARAMETERS = {(byte) 0xA3}; // Constructed Object
@@ -92,6 +80,18 @@ public class Constant {
     public static final byte[] UWB_CONFIG_AVAILABLE = {(byte) 0x8D};
     /* UWB_SESSION_DATA end */
 
+    /* ADF content */
+    public static final byte[] OID = {0x41};
+    public static final byte[] INSTANCE_UID = {0x41};
+    public static final byte[] UWB_CONTROLEE_INFO = {0x42};
+    public static final byte[] UWB_SESSION_DATA = {0x43};
+    public static final byte[] ACCESS_CONDITIONS = {0x44};
+    public static final byte[] ADF_PROVISIONING_CREDENTIAL = {0x45};
+    public static final byte[] FIRA_SC_CREDENTIAL = {0x46};
+    public static final byte[] EXTENDED_OPTIONS = {0x47};
+    public static final byte[] SERVICE_DATA = {0x48};
+    public static final byte[] COMMAND_ROUTING_INFORMATION = {0x49};
+
     public static final byte[] FIRA_SC_CREDENTIAL_ADF_BASE_KEY = {0x50};
     public static final byte[] FIRA_SC_CREDENTIAL_MK_SCX_ENC = {0x51};
     public static final byte[] FIRA_SC_CREDENTIAL_MK_SCX_MAC = {0x52};
@@ -102,34 +102,16 @@ public class Constant {
     public static final byte[] FIRA_SC_CREDENTIAL_SK_SC2_AUT = {0x57};
     public static final byte[] FIRA_SC_CREDENTIAL_UWB_RANGING_ROOT_KEY = {0x58};
 
-
-    /* TODO: check whether to use enum or variable declaration */
-    public enum indexesADF {
-            OID((short)1),
-            InstanceUID((short)2),
-            UWBControleeInfo((short)3),
-            UWBSessionData((short)4),
-            AccessCondition((short)5),
-            ADFProvisioningCredential((short)6),
-            FIRaSCCredential((short)7),
-            ExtendedOptions((short)8),   // (4 bytes)
-            ServiceData((short)9),
-            CommandRoutingInformation((short)10);
-
-        private final short value;
-        indexesADF(short value) {
-            this.value = value;
-        }
-
-        public short getValue() {
-            return value;
-        }
-    }
+    /* PACS ADF instance index */
+    public static final short PACS_OID = 1;
+    public static final short PACS_UWB_CAPABILITIES = 3;
+    public static final short PACS_UWB_SESSION_DATA = 4;
+    public static final short PACS_UWB_AC_OBJECT = 5;
 
     /* INS commands */
     public static final byte INS_SELECT = (byte) 0xA4;
-    public static final byte INS_SELECT_ADF = (byte) 0xA5; //0xA5;
-    public static final byte INS_LOAD_ADF = (byte) 0xA6; // Custom command
+    public static final byte INS_SELECT_ADF = (byte) 0xA5;
+    public static final byte INS_SWAP_ADF = (byte) 0x40;
 
     /* AES constants */
     public static final short AES_BLOCK_SIZE = 16;
@@ -137,7 +119,11 @@ public class Constant {
     public static final byte AES_GCM_TAG_SIZE = 16;
 
     /* Memory Buffers */
+    public static final short NU_ADF_SLOTS = 8; // one byte
     public static final short HEAP_SIZE = 2048;
-    public static final short ADF_BUFFER_SIZE = 2048; // 2k (1k Swapping decryption )
-    public static final short ADF_PACS_PROFILE_SIZE = 1024;
+    public static final short ADF_SIZE = 1024; // 1k
+    public static final short ADF_BUFFER_SIZE = (ADF_SIZE * NU_ADF_SLOTS); // 1k*n
+    public static final short ADF_PACS_PROFILE_SIZE = 480; // PACS size rounded to AES_KEY_SIZE
+
+    public static final short NU_LOGICAL_CHANNEL = 8;
 }

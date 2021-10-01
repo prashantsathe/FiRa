@@ -1,9 +1,9 @@
 package com.android.fira.applet;
 
-import com.android.ber.BerArrayLinkList;
-import com.android.ber.BerTlvParser;
 import javacard.framework.*;
 import javacardx.apdu.ExtendedLength;
+
+import static javacard.framework.ISO7816.OFFSET_P1;
 
 @SuppressWarnings("FieldCanBeLocal")
 public class FiraApplet extends Applet implements ExtendedLength {
@@ -17,7 +17,7 @@ public class FiraApplet extends Applet implements ExtendedLength {
     private static ADFManager mAdfManager;
     private static SessionManager mSessionManager;
     private static Repository mRepository;
-    private static CryptoManager mCryptoManager;
+
 
     /**
      * Registers this applet.
@@ -25,7 +25,6 @@ public class FiraApplet extends Applet implements ExtendedLength {
     protected FiraApplet() {
         mAdfManager = new ADFManager();
         mSessionManager = new SessionManager();
-        mCryptoManager = new CryptoManager();
         mRepository = new Repository();
         mHeapBuffer = JCSystem.makeTransientByteArray(Constant.HEAP_SIZE, JCSystem.CLEAR_ON_RESET);
     }
@@ -50,7 +49,7 @@ public class FiraApplet extends Applet implements ExtendedLength {
         // Read the apdu header and buffer.
         byte[] apduBuffer = apdu.getBuffer();
         byte apduClass = apduBuffer[ISO7816.OFFSET_CLA];
-        short P1P2 = Util.getShort(apduBuffer, ISO7816.OFFSET_P1);
+        short P1P2 = Util.getShort(apduBuffer, OFFSET_P1);
 
         // Validate APDU Header.
         if ((apduClass != CLA_ISO7816_NO_SM_NO_CHAN)) {
@@ -80,22 +79,31 @@ public class FiraApplet extends Applet implements ExtendedLength {
         }
     }
 
-    private void processLoadADF(APDU apdu) {
-        byte[] adfBuff = mRepository.getADFBuffer();
+    private void processSwapADF(APDU apdu) {
+        boolean acquire = apdu.getBuffer()[ISO7816.OFFSET_P1] == 0x00;
+        byte[] adfBuff = mRepository.getADFBuffers();
+        short adfFreeIndex = mRepository.getFreeIndex();
+
+        if (adfFreeIndex == -1) {
+            /* Error set */
+            return;
+        }
+
+        short adfFreeIndexOffset = mRepository.getFreeIndexOffset(adfFreeIndex);
+
         receiveIncoming(apdu);
 
-        if (Constant.ADF_PACS_PROFILE_SIZE != mCryptoManager.aesCBC128NoPadDecrypt(mHeapBuffer,
-                        mRepository.getADFBufferOffset(), m_ExtBufLength, adfBuff, (short) 0)) {
-            /*TODO:- */
-            return;
-        }
+        if(acquire) {
+            if (!mAdfManager.parserAndValidateSwapAdf(adfBuff, adfFreeIndexOffset, Constant.ADF_SIZE,
+                    mHeapBuffer, (short) 0, m_ExtBufLength)) {
+                /*TODO:- */
+                return;
+            }
+            mRepository.setADF(adfFreeIndex);
 
-        if (mAdfManager.parser(adfBuff, (short)0, m_ExtBufLength)) {
-            /*TODO:- */
-            return;
-        }
+        } else {
 
-        mRepository.setCurrentADF();
+        }
 
         /* TODO:- return response */
     }
@@ -105,11 +113,6 @@ public class FiraApplet extends Applet implements ExtendedLength {
         short revLen = apdu.setIncomingAndReceive();
         short srcOffset = apdu.getOffsetCdata();
         short dataLen = apdu.getIncomingLength();
-        // check dataLen == revLen ??
-
-        if (mAdfManager.parser(apduBuffer, srcOffset, revLen)) {
-
-        }
 
         /*TODO:- return response*/
     }
@@ -128,7 +131,7 @@ public class FiraApplet extends Applet implements ExtendedLength {
 
     @Override
     public void process(APDU apdu) {
-        /* SELECT */
+        /* SELECT / Check swap CLA 0x80-83, 0xC0-CF */
         if (apdu.isISOInterindustryCLA()) {
             if (selectingApplet()) {
                 return;
@@ -136,17 +139,18 @@ public class FiraApplet extends Applet implements ExtendedLength {
         }
 
         validateApduHeader(apdu);
-        byte[] apduBuffer = apdu.getBuffer();
-        byte apduIns = apduBuffer[ISO7816.OFFSET_INS];
+        byte apduIns = apdu.getBuffer()[ISO7816.OFFSET_INS];
 
+        /* TODO: Exception catch */
         switch (apduIns) {
             case Constant.INS_SELECT:
-                processSelect(apdu);
+                // processSelect(apdu);
             case Constant.INS_SELECT_ADF:
-                processSelectADF(apdu);
+                //processSelectADF(apdu);
                 break;
-            case Constant.INS_LOAD_ADF:
-                processLoadADF(apdu);
+            case Constant.INS_SWAP_ADF:
+                /* TODO: make sure to call this INS before any secure channel */
+                processSwapADF(apdu);
                 break;
         }
     }

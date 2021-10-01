@@ -43,8 +43,8 @@ public class BerArrayLinkList {
     private final short TAIL_OFFSET = -1;
 
     public final static short BLOCK_SIZE = (1/* Tag offset */       + 1 /* tag byte count*/) +
-            (1/* length offset */    + 1 /* length */) +
-            (1/* Next Sub-linklist*/ + 1 /* Next offset */);
+                                            (1/* length offset */    + 1 /* length */) +
+                                            (1/* Next Sub-linklist*/ + 1 /* Next offset */);
 
     public void AllocateLinkList() {
         AllocateLinkList(DEFAULT_SIZE);
@@ -52,6 +52,14 @@ public class BerArrayLinkList {
 
     public void AllocateLinkList(short size) {
         allocateBERLinkList(size);
+    }
+
+    private void allocateBERLinkList(short size) {
+        this.maxSize = size;
+        this.size = 0;
+        this.offset = START_OFFSET;
+        llBuffer = JCSystem.makeTransientShortArray((short) (size * BLOCK_SIZE), JCSystem.CLEAR_ON_DESELECT);
+        llBuffer[0] = llBuffer[1] = -1; // Root&Tail to -1/null
     }
 
     public short allocateBerTlv(boolean newList) {
@@ -103,7 +111,7 @@ public class BerArrayLinkList {
         printTLV(START_OFFSET, buffer);
     }
 
-    /* TODO: ADD flag for printing statements */
+    /* TODO: Remove this function /  printing statements */
     private void printTLV(short OffSet, byte[] buffer) {
         short next = llBuffer[OffSet + ROOT_OFFSET];
 
@@ -130,11 +138,12 @@ public class BerArrayLinkList {
         if (fromPtr == -1)
             ptr = fromPtr;
 
-        while (0 == (tmp--)) {
+        while (0 != (tmp--)) {
             ptr = llBuffer[ptr + 5];
         }
 
-        return llBuffer[ptr];
+        //return llBuffer[ptr];
+        return ptr;
     }
 
     public short getNextTag(short fromPtr) {
@@ -149,11 +158,5 @@ public class BerArrayLinkList {
         return llBuffer[tlvPtr + 3];
     }
 
-    private void allocateBERLinkList(short size) {
-        this.maxSize = size;
-        this.size = 0;
-        this.offset = START_OFFSET;
-        llBuffer = JCSystem.makeTransientShortArray((short) (size * BLOCK_SIZE), JCSystem.CLEAR_ON_DESELECT);
-        llBuffer[0] = llBuffer[1] = -1; // Root&Tail to -1/null
-    }
+
 }

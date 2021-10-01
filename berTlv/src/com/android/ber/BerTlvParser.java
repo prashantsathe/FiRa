@@ -11,6 +11,8 @@ public class BerTlvParser {
     }
 
     public BerArrayLinkList parser(byte[] buffer, short offset, short length) {
+        short berTlvPtr = -1;
+
         if ((countNumberOfTags(buffer, offset, length) == 0) || length == 0) return null;
 
         short tOffset = offset;
@@ -19,7 +21,9 @@ public class BerTlvParser {
 
         /* TODO:- while(offset < length - 1) or max 100, release library has max 100 */
         for (short i = 0; i < 100 ; i++) {
-            short berTlvPtr = getTlvFrom(buffer, tOffset, (short) (length -  tOffset), false);
+            berTlvPtr = getTlvFrom(buffer, tOffset, (short) (length -  tOffset), false);
+
+            if(berTlvPtr == -1) break;
             tlvsLL.addToBottom(berTlvPtr, startLLOffset);
 
             if(gOffset >= offset + length) {
@@ -36,6 +40,8 @@ public class BerTlvParser {
         short count = 0, tOffset = offset, tagByteCnt = 0, lengthByteCnt = 0, valueCount = 0;
 
         while (tOffset < (length + offset)) {
+            if (buffer[tOffset] == 0) break;
+
             tagByteCnt =  getTotalTagBytesCount(buffer, tOffset);
             lengthByteCnt = getTotalLengthBytesCount(buffer, (short) (tOffset + tagByteCnt));
             valueCount = getDataLength(buffer, (short) (tOffset + tagByteCnt));
@@ -46,7 +52,7 @@ public class BerTlvParser {
         return count;
     }
 
-    private short getTotalLengthBytesCount(byte[] buffer, short offset) {
+    public short getTotalLengthBytesCount(byte[] buffer, short offset) {
         short len = (short) (buffer[offset] & 0xff);
 
         if ((len & 0x80) == 0x80) {
@@ -56,7 +62,7 @@ public class BerTlvParser {
         }
     }
 
-    private short getDataLength(byte[] buffer, short offset) {
+    public short getDataLength(byte[] buffer, short offset) {
 
         short length = (short) (buffer[offset] & 0xff);
 
@@ -76,7 +82,7 @@ public class BerTlvParser {
         return length;
     }
 
-    private short getTotalTagBytesCount(byte[] buffer, short offset) {
+    public short getTotalTagBytesCount(byte[] buffer, short offset) {
         if ((buffer[offset] & 0x1F) == 0x1F) { // see subsequent bytes
             short len = 2;
             for(short i = (short) (offset + 1); i < offset + 10; i++) {
@@ -93,10 +99,9 @@ public class BerTlvParser {
 
     private short getTlvFrom(byte[] buffer, short offset, short len, boolean cObject) {
 
-        short tlvPtrOffset = tlvsLL.allocateBerTlv(cObject);
-
-        if (offset + len > buffer.length) {
+        if ((offset + len > buffer.length) || buffer[offset] == 0)  {
             // TODO: throw exception
+            return -1;
         }
 
         // Tag calculation
@@ -110,6 +115,8 @@ public class BerTlvParser {
         short valueOffset = (short) (offset + tagBytesCount + lengthBytesCount);
         short finalOffset = (short) (valueOffset + berLength);
         gOffset = finalOffset;
+
+        short tlvPtrOffset = tlvsLL.allocateBerTlv(cObject);
 
         // value calculation
         // if Bit 5 is set it's a "constructed data object"

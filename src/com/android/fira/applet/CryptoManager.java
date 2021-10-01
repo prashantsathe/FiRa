@@ -1,9 +1,7 @@
 package com.android.fira.applet;
 
 import javacard.framework.JCSystem;
-import javacard.framework.Util;
 import javacard.security.*;
-import javacardx.crypto.AEADCipher;
 import javacardx.crypto.Cipher;
 
 public class CryptoManager {

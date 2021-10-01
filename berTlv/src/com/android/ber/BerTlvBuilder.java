@@ -13,6 +13,27 @@ public class BerTlvBuilder {
         berStack = new BerStack(stackSize);
     }
 
+    public short addTlv(byte[] buffer, short bufferOffset, short bufferLength,
+                        byte[] tag, short tagOffset, short tagLength,
+                        byte[] tlv, short tlvOffset, short tlvLength) {
+        short rOffset = bufferOffset;
+
+        /* Return if buffer overflow is going to happen */
+        if ((rOffset + tagLength + tlvLength) > bufferLength) return bufferOffset;
+
+        for (short i = 0; i < tagLength ; i++) {
+            buffer[rOffset++] = tag[i + tagOffset];
+        }
+
+        rOffset += fillLength(buffer, tlvLength, rOffset);
+
+        for (short i = 0; i < tlvLength ; i++) {
+            buffer[rOffset++] = tlv[i + tlvOffset];
+        }
+
+        return rOffset;
+    }
+
     public short addTlv(byte[] buffer, byte[] tag, byte[] HexLength, short offset) {
         short rOffset = offset;
 
