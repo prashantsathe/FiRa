@@ -13,7 +13,28 @@ public class BerTlvBuilder {
         berStack = new BerStack(stackSize);
     }
 
-    public short AddTlv(byte[] buffer, byte[] tag, byte[] HexLength, short offset) {
+    public short addTlv(byte[] buffer, short bufferOffset, short bufferLength,
+                        byte[] tag, short tagOffset, short tagLength,
+                        byte[] tlv, short tlvOffset, short tlvLength) {
+        short rOffset = bufferOffset;
+
+        /* Return if buffer overflow is going to happen */
+        if ((rOffset + tagLength + tlvLength) > bufferLength) return bufferOffset;
+
+        for (short i = 0; i < tagLength ; i++) {
+            buffer[rOffset++] = tag[i + tagOffset];
+        }
+
+        rOffset += fillLength(buffer, tlvLength, rOffset);
+
+        for (short i = 0; i < tlvLength ; i++) {
+            buffer[rOffset++] = tlv[i + tlvOffset];
+        }
+
+        return rOffset;
+    }
+
+    public short addTlv(byte[] buffer, byte[] tag, byte[] HexLength, short offset) {
         short rOffset = offset;
 
         /* Return if buffer overflow is going to happen */
@@ -23,7 +44,7 @@ public class BerTlvBuilder {
             buffer[rOffset++] = tag[i];
         }
 
-        rOffset += FillLength(buffer, (short) HexLength.length, rOffset);
+        rOffset += fillLength(buffer, (short) HexLength.length, rOffset);
 
         for (short i = 0; i < HexLength.length ; i++) {
             buffer[rOffset++] = HexLength[i];
@@ -32,10 +53,10 @@ public class BerTlvBuilder {
         return rOffset;
     }
 
-    public short EndCOTag(byte[] buffer, byte[] tag, short offset) {
+    public short endCOTag(byte[] buffer, byte[] tag, short offset) {
         short rOffset = offset;
         short startOffset = berStack.pop();
-        short lengthBytesCnt = GetLengthByteCnt((short) (offset - startOffset));
+        short lengthBytesCnt = getLengthByteCnt((short) (offset - startOffset));
 
         /* Return if buffer overflow is going to happen */
         if ((rOffset + tag.length) > buffer.length) return offset;
@@ -49,17 +70,17 @@ public class BerTlvBuilder {
         }
 
                                         /* Actual length */
-        FillLength(buffer, (short) (offset - startOffset), (short) (startOffset + tag.length));
+        fillLength(buffer, (short) (offset - startOffset), (short) (startOffset + tag.length));
 
         return rOffset;
     }
 
-    public void StartCOTag(short offset) {
+    public void startCOTag(short offset) {
         berStack.push(offset);
     }
 
     /* return number of bytes required for length*/
-    private short FillLength(byte[] buffer, short length, short offset) {
+    private short fillLength(byte[] buffer, short length, short offset) {
         short byteCnt = 1;
 
         if (length < 0x80) {
@@ -86,7 +107,7 @@ public class BerTlvBuilder {
         return byteCnt;
     }
 
-    private short GetLengthByteCnt(short length) {
+    private short getLengthByteCnt(short length) {
         if (length < 0x80) return 1;
         else if (length <0x100) return 2;
         else if (length < 0x10000) return 3;

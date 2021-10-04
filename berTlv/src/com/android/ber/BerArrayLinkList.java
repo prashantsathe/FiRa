@@ -30,9 +30,8 @@ import javacard.framework.JCSystem;
  | (Offset) | (Offset) |            |              |              |                 |                       |            |                        |                       |
  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-
  ******************************************************************************/
-
+@SuppressWarnings("FieldCanBeLocal")
 public class BerArrayLinkList {
     private short size;
     private short maxSize;
@@ -40,21 +39,30 @@ public class BerArrayLinkList {
     private short[] llBuffer;
     private final short DEFAULT_SIZE = 20;
     private final short START_OFFSET = 2;
-    private final short BLOCK_SIZE = (1/* Tag offset */       + 1 /* tag byte count*/) +
-                                     (1/* length offset */    + 1 /* length */) +
-                                     (1/* Next Sub-linklist*/ + 1 /* Next offset */);
     private final short ROOT_OFFSET = -2;
     private final short TAIL_OFFSET = -1;
+
+    public final static short BLOCK_SIZE = (1/* Tag offset */       + 1 /* tag byte count*/) +
+                                            (1/* length offset */    + 1 /* length */) +
+                                            (1/* Next Sub-linklist*/ + 1 /* Next offset */);
 
     public void AllocateLinkList() {
         AllocateLinkList(DEFAULT_SIZE);
     }
 
     public void AllocateLinkList(short size) {
-        AllocateBERLinkList(size);
+        allocateBERLinkList(size);
     }
 
-    public short AllocateBerTlv(boolean newList) {
+    private void allocateBERLinkList(short size) {
+        this.maxSize = size;
+        this.size = 0;
+        this.offset = START_OFFSET;
+        llBuffer = JCSystem.makeTransientShortArray((short) (size * BLOCK_SIZE), JCSystem.CLEAR_ON_DESELECT);
+        llBuffer[0] = llBuffer[1] = -1; // Root&Tail to -1/null
+    }
+
+    public short allocateBerTlv(boolean newList) {
         short returnPtr = -1;
         if (this.size >= maxSize) return returnPtr;
 
@@ -70,7 +78,7 @@ public class BerArrayLinkList {
         return returnPtr;
     }
 
-    public void CreateBerTlv(short tagOffset, short tagByteLength,
+    public void createBerTlv(short tagOffset, short tagByteLength,
                              short lengthOffset, short length,
                              short tlvPtrOffset, short subLinkListPtr) {
         llBuffer[tlvPtrOffset] = tagOffset;
@@ -80,11 +88,11 @@ public class BerArrayLinkList {
         llBuffer[tlvPtrOffset + 4] = subLinkListPtr;
     }
 
-    public void AddToTop(short tlvPtrOffset) {
+    public void addToTop(short tlvPtrOffset) {
 
     }
 
-    public void AddToBottom(short berTlvPtr, short firstElementOffset) {
+    public void addToBottom(short berTlvPtr, short firstElementOffset) {
         /* TODO: Corner condition check */
 
         if (llBuffer[firstElementOffset + ROOT_OFFSET] == -1) {
@@ -99,12 +107,12 @@ public class BerArrayLinkList {
         size++;
     }
 
-    public void PrintAllTags(byte[] buffer) {
-        PrintTLV(START_OFFSET, buffer);
+    public void printAllTags(byte[] buffer) {
+        printTLV(START_OFFSET, buffer);
     }
 
-    /* TODO: ADD flag for printing statements */
-    private void PrintTLV(short OffSet, byte[] buffer) {
+    /* TODO: Remove this function /  printing statements */
+    private void printTLV(short OffSet, byte[] buffer) {
         short next = llBuffer[OffSet + ROOT_OFFSET];
 
         while (next != -1) {
@@ -113,7 +121,7 @@ public class BerArrayLinkList {
                 System.out.println("Constructed data Object: "
                         + "FirstTagByte=[" + buffer[llBuffer[next]] + "] "+ " TagByteCnt=" + llBuffer[next + 1]
                         +" TotalLength="+ llBuffer[next + 3] + "\n{ ");
-                PrintTLV(llBuffer[next + 4], buffer);
+                printTLV(llBuffer[next + 4], buffer);
                 System.out.println("}");
             } else {
                 System.out.println("TAG=[" + buffer[llBuffer[next]] + "] "+ " TagByteCnt=" + llBuffer[next + 1]
@@ -123,11 +131,32 @@ public class BerArrayLinkList {
         }
     }
 
-    private void AllocateBERLinkList(short size) {
-        this.maxSize = size;
-        this.size = 0;
-        this.offset = START_OFFSET;
-        llBuffer = JCSystem.makeTransientShortArray((short) (size * BLOCK_SIZE), JCSystem.CLEAR_ON_DESELECT);
-        llBuffer[0] = llBuffer[1] = -1; // Root&Tail to -1/null
+    public short getTLVInstance(short tlvOffset, short fromPtr) {
+        short tmp = tlvOffset;
+        short ptr = llBuffer[2 + ROOT_OFFSET];
+
+        if (fromPtr == -1)
+            ptr = fromPtr;
+
+        while (0 != (tmp--)) {
+            ptr = llBuffer[ptr + 5];
+        }
+
+        //return llBuffer[ptr];
+        return ptr;
     }
+
+    public short getNextTag(short fromPtr) {
+        return llBuffer[fromPtr + 5];
+    }
+
+    public short getTagOffset(short tlvOffset) {
+        return llBuffer[tlvOffset];
+    }
+
+    public short getLength(short tlvPtr) {
+        return llBuffer[tlvPtr + 3];
+    }
+
+
 }
