@@ -44,6 +44,20 @@ public class FiraTest {
         return new CommandAPDU(buf, 0, cmdLen + 7);
     }
 
+    private CommandAPDU encodeApdu(byte ins, byte[] cmd, short cmdLen, byte p1, byte p2) {
+        byte[] buf = new byte[2500];
+        buf[0] = (byte) 0x80;
+        buf[1] = ins;
+        buf[2] = p1;
+        buf[3] = p2;
+        buf[4] = 0;
+
+        Util.setShort(buf, (short) 5, cmdLen);
+
+        Util.arrayCopyNonAtomic(cmd, (short) 0, buf, (short) 7, cmdLen);
+        return new CommandAPDU(buf, 0, cmdLen + 7);
+    }
+
     @Test
     public void TestSelectADF_PrimitiveDataObject() {
         init();
@@ -65,7 +79,6 @@ public class FiraTest {
         CommandAPDU apdu = encodeApdu((byte) Constant.INS_SELECT_ADF, sel, (short) sel.length);
         ResponseAPDU response = simulator.transmitCommand(apdu);
     }
-
 
     @Test
     public void TestSelectADF_ConstructedDataObject() {
@@ -149,9 +162,8 @@ public class FiraTest {
         ResponseAPDU response = simulator.transmitCommand(apdu);
     }
 
-
     @Test
-    public void TestCustomSwapAdfCmd() {
+    public void TestSwapAdfCmd() {
         byte[] adf = new byte[1024];
         byte[] adfTlv = new byte[1024];
         byte[] out = new byte[1051];
@@ -224,7 +236,57 @@ public class FiraTest {
             }
         }
 
-        CommandAPDU apdu = encodeApdu(Constant.INS_SWAP_ADF, out, (short) (encLength + pacsOffset));
+        CommandAPDU apdu = encodeApdu(Constant.INS_SWAP_ADF, out, (short) (encLength + pacsOffset), (byte)0x01, (byte)0x00);
+        ResponseAPDU response = simulator.transmitCommand(apdu);
+    }
+
+    @Test
+    public void TestImportAdfCmd() {
+        byte[] adf = new byte[1024];
+        byte[] adfTlv = new byte[1024];
+
+        init();
+
+        /* Dummy Data in sequence */
+        adf[0] = 2; adf[74] = 3; // UWB capabilities
+        adf[75] = 4; adf[327] = 5; // UWB session data
+        adf[328] = 6; adf[411] = 7; // AC objects
+
+        short offset = 0;
+        {
+            // Dummy data
+            berTlvBuilder.startCOTag(offset);
+            {
+                offset = berTlvBuilder.addTlv(adfTlv, offset, (short) adfTlv.length,
+                        Constant.FIRA_PHY_VERSION_RANGE, (short) 0, (short) Constant.FIRA_PHY_VERSION_RANGE.length,
+                        adf, (short) 0, (short) 75);
+            }
+            offset = berTlvBuilder.endCOTag(adfTlv, Constant.UWB_CAPABILITIES, offset);
+
+
+            offset = berTlvBuilder.addTlv(adfTlv, offset, (short) adfTlv.length,
+                    Constant.UWB_SESSION_DATA_VERSION, (short) 0, (short) Constant.UWB_SESSION_DATA_VERSION.length,
+                    adf, (short) 75, (short) 253);
+
+            offset = berTlvBuilder.addTlv(adfTlv, offset, (short) adfTlv.length,
+                    Constant.FIRA_SC_CREDENTIAL, (short) 0, (short) Constant.FIRA_SC_CREDENTIAL.length,
+                    adf, (short) 328, (short) 84);
+        }
+
+        CommandAPDU apdu = encodeApdu(Constant.INS_IMPORT_ADF, adfTlv, offset, (byte)0x00, (byte)0x00);
+        ResponseAPDU response = simulator.transmitCommand(apdu);
+    }
+
+    @Test
+    public void TestSelectCmd() {
+        byte[] aid = new byte[16];
+
+        init();
+
+        /* Dummy Data in sequence */
+        aid[0] = 2; aid[14] = 3;
+        aid[1] = 4; aid[15] = 5;
+        CommandAPDU apdu = encodeApdu(Constant.INS_SELECT, aid, (short) aid.length, (byte)0x04, (byte)0x00);
         ResponseAPDU response = simulator.transmitCommand(apdu);
     }
 }
