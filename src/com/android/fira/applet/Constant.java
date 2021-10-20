@@ -1,6 +1,6 @@
 package com.android.fira.applet;
 
-public class Constant {
+public final class Constant {
     /* UWB_CONTROLEE_INFO start */
     public static final byte[] UWB_CAPABILITY_VERSION = {(byte) 0x80};
     public static final byte[] UWB_CAPABILITIES = {(byte) 0xA3}; // Constructed Object
@@ -113,6 +113,8 @@ public class Constant {
     public static final byte INS_SELECT_ADF = (byte) 0xA5;
     public static final byte INS_SWAP_ADF = (byte) 0x40;
     public static final byte INS_IMPORT_ADF = (byte) 0xEB;
+    public static final byte INS_PUT_DATA = (byte) 0xDB;
+    public static final byte INS_GET_DATA = (byte) 0xCB;
 
     /* AES constants */
     public static final short AES_BLOCK_SIZE = 16;

@@ -13,10 +13,10 @@ import javacard.framework.JCSystem;
     short nextSubLinkListOffset --> Set for constructed data object otherwise set to -1
     short NextOffset
  }
- Above structure hold offset information from a buffer representing a BER encoded data
+ Above structure hold offset information from a buffer representing BER encoded data
 
  Array based LinkList Example (All information are stored in Array)
- First two short data Elements are used as a link list reference pointers for adding data Top&Bottom of the list
+ First two short data Elements are used as a link list reference pointers to root and tail of the list
 --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 | Root Ptr | tail Ptr | tagOffSet  | tagByteCount | lengthOffset | lengthByteCount | nextSubLinkListOffset | NextOffset| {Next structure data} | {Next structure data} |
 | (Offset) | (Offset) |            |              |              |                 |          |            |  -------->|---------------------->|---------------------->NULL

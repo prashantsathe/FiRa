@@ -276,17 +276,4 @@ public class FiraTest {
         CommandAPDU apdu = encodeApdu(Constant.INS_IMPORT_ADF, adfTlv, offset, (byte)0x00, (byte)0x00);
         ResponseAPDU response = simulator.transmitCommand(apdu);
     }
-
-    @Test
-    public void TestSelectCmd() {
-        byte[] aid = new byte[16];
-
-        init();
-
-        /* Dummy Data in sequence */
-        aid[0] = 2; aid[14] = 3;
-        aid[1] = 4; aid[15] = 5;
-        CommandAPDU apdu = encodeApdu(Constant.INS_SELECT, aid, (short) aid.length, (byte)0x04, (byte)0x00);
-        ResponseAPDU response = simulator.transmitCommand(apdu);
-    }
 }

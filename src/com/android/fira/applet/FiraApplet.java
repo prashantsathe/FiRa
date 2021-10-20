@@ -4,8 +4,6 @@ import javacard.framework.*;
 import javacardx.apdu.ExtendedLength;
 import javacard.framework.MultiSelectable;
 
-import static javacard.framework.ISO7816.OFFSET_P1;
-
 @SuppressWarnings("FieldCanBeLocal")
 public class FiraApplet extends Applet implements ExtendedLength, MultiSelectable {
 
@@ -122,6 +120,7 @@ public class FiraApplet extends Applet implements ExtendedLength, MultiSelectabl
     }
 
     private void processSelectADF(APDU apdu) {
+        byte[] apduBuffer = apdu.getBuffer();
         if (apdu.getBuffer()[ISO7816.OFFSET_P1] != 0x00 || !(
                 apdu.getBuffer()[ISO7816.OFFSET_P2] >= 0x00 &&
                         apdu.getBuffer()[ISO7816.OFFSET_P2] <= 0x1F )) {
@@ -133,23 +132,15 @@ public class FiraApplet extends Applet implements ExtendedLength, MultiSelectabl
         /*TODO:- return response*/
     }
 
+    private void processPutData(APDU apdu) {
+        byte[] apduBuffer = apdu.getBuffer();
 
-    private void processSelect(APDU apdu) {
-        if (apdu.getBuffer()[ISO7816.OFFSET_P1] != 0x04 ||
-                apdu.getBuffer()[ISO7816.OFFSET_P2] != 0x00) {
+        if (apduBuffer[ISO7816.OFFSET_P1] != 0x3F ||
+                apduBuffer[ISO7816.OFFSET_P2] != (byte) 0xFF) {
             ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
         }
 
-        byte[] apduBuffer = apdu.getBuffer();
-        short dataLen = apdu.setIncomingAndReceive();
-        short srcOffset = apdu.getOffsetCdata();
-
-        if (!mRepository.verifyAID(apduBuffer, srcOffset, dataLen)) {
-            ISOException.throwIt(ISO7816.SW_FILE_NOT_FOUND);
-        }
-
-        /* return response */
-        sendOutgoing(apdu, setSuccessStatus((short) 0));
+        receiveIncoming(apdu);
     }
 
     @Override
@@ -166,9 +157,6 @@ public class FiraApplet extends Applet implements ExtendedLength, MultiSelectabl
             validateApduHeader(apdu);
             byte apduIns = apdu.getBuffer()[ISO7816.OFFSET_INS];
 
-            /*TODO: need to move all p1p2 calculation outside */
-            short P1P2 = Util.getShort(apdu.getBuffer(), OFFSET_P1);
-
             switch (apduIns) {
                 case Constant.INS_SWAP_ADF:
                     /* Make sure to call this INS before any secure channel */
@@ -177,13 +165,15 @@ public class FiraApplet extends Applet implements ExtendedLength, MultiSelectabl
                 case Constant.INS_IMPORT_ADF:
                     processImportADF(apdu);
                     break;
-                case Constant.INS_SELECT:
-                    processSelect(apdu);
+                case Constant.INS_PUT_DATA:
+                    processPutData(apdu);
+                    break;
                 case Constant.INS_SELECT_ADF:
                     //processSelectADF(apdu);
                     break;
             }
         } catch (ISOException exp) {
+            /* return error response */
             sendError(apdu, exp.getReason());
         }
     }
