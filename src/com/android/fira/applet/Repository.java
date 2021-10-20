@@ -10,10 +10,10 @@ public class Repository {
     private byte[] mAdfAllocation;
 
     protected Repository() {
-        mADFBuffer = JCSystem.makeTransientByteArray(Constant.ADF_BUFFER_SIZE, JCSystem.CLEAR_ON_RESET);
+        mADFBuffer = JCSystem.makeTransientByteArray(Constant.ADF_BUFFER_N_SIZE, JCSystem.CLEAR_ON_RESET);
         mAdfAllocation = JCSystem.makeTransientByteArray((short) 1, JCSystem.CLEAR_ON_DESELECT);
 
-        mApplicationDataStructure = JCSystem.makeTransientByteArray(Constant.ADF_BUFFER_SIZE, JCSystem.CLEAR_ON_RESET);
+        mApplicationDataStructure = JCSystem.makeTransientByteArray(Constant.ADF_SIZE, JCSystem.CLEAR_ON_RESET);
     }
 
     public byte[] getADFBuffers() {
@@ -39,6 +39,10 @@ public class Repository {
 
     public void setADF(short index) {
         mAdfAllocation[0] |= (byte)(1 << index);
+    }
+
+    public void resetADF(short index) {
+        mAdfAllocation[0] &= (byte)(~(1 << index));
     }
 
     public boolean verifyAID(byte[] apduBuffer, short offset, short length) {

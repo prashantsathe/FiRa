@@ -14,6 +14,11 @@ public class ADFManager {
         mCryptoManager = new CryptoManager();
     }
 
+    /* Encrypt the ADF(secure Blob) received from Import ADF */
+    public short encryptImportAdf(byte[] adfTlv, short offSet, byte[] out, short outOffset) {
+        return mCryptoManager.aesCBC128NoPadEncrypt(adfTlv, offSet, (short) 480, out,outOffset);
+    }
+
     /* Validate the ADF structure / Swap adf secure-blob */
     public boolean parserAndValidateSwapAdf(byte[] buffer, short offSetBuffer, short lengthBuffer,
                                             byte[] heapBuffer, short offSetHeapBuffer, short lengthHeapBuffer) {

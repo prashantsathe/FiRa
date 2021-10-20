@@ -5,7 +5,6 @@ public class BerTlvParser {
     private short gOffset;
 
     public BerTlvParser() {
-        /* TODO: null check */
         tlvsLL = new BerArrayLinkList();
         gOffset = 0;
     }
