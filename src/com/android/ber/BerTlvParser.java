@@ -25,7 +25,7 @@ public class BerTlvParser {
             if(berTlvPtr == -1) break;
             tlvsLL.addToBottom(berTlvPtr, startLLOffset);
 
-            if(gOffset >= offset + length) {
+            if(gOffset >= (short) (offset + length)) {
                 break;
             }
 
@@ -38,7 +38,7 @@ public class BerTlvParser {
     private short countNumberOfTags(byte[] buffer, short offset, short length) {
         short count = 0, tOffset = offset, tagByteCnt = 0, lengthByteCnt = 0, valueCount = 0;
 
-        while (tOffset < (length + offset)) {
+        while (tOffset < (short)(length + offset)) {
             if (buffer[tOffset] == 0) break;
 
             tagByteCnt =  getTotalTagBytesCount(buffer, tOffset);
@@ -73,7 +73,7 @@ public class BerTlvParser {
             }
 
             length = 0;
-            for (short i = (short) (offset + 1); i < (offset + 1 + numberOfBytes); i++) {
+            for (short i = (short) (offset + 1); i < (short) (offset + 1 + numberOfBytes); i++) {
                 length = (short) (length * 0x100 + (buffer[i] & 0xff));
             }
 
@@ -84,7 +84,7 @@ public class BerTlvParser {
     public short getTotalTagBytesCount(byte[] buffer, short offset) {
         if ((buffer[offset] & 0x1F) == 0x1F) { // see subsequent bytes
             short len = 2;
-            for(short i = (short) (offset + 1); i < offset + 10; i++) {
+            for(short i = (short) (offset + 1); i < (short) (offset + 10); i++) {
                 if( (buffer[i] & 0x80) != 0x80) {
                     break;
                 }
@@ -98,7 +98,7 @@ public class BerTlvParser {
 
     private short getTlvFrom(byte[] buffer, short offset, short len, boolean cObject) {
 
-        if ((offset + len > buffer.length) || buffer[offset] == 0)  {
+        if (((short)(offset + len) > buffer.length) || buffer[offset] == 0)  {
             // TODO: throw exception
             return -1;
         }
@@ -135,7 +135,7 @@ public class BerTlvParser {
         short len = valueLength;
         short retOffset = -1; // represent First offset of list
 
-        while (startPosition < offset + valueLength) {
+        while (startPosition < (short) (offset + valueLength)) {
             short berTlvPtr = getTlvFrom(buffer, startPosition, len, retOffset == -1);
 
             if (retOffset == -1)

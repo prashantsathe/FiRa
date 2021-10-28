@@ -1,10 +1,9 @@
-package com.android.fira.applet;
+package com.android.fira;
 
 import javacard.framework.*;
 import javacardx.apdu.ExtendedLength;
 import javacard.framework.MultiSelectable;
 
-@SuppressWarnings("FieldCanBeLocal")
 public class FiraApplet extends Applet implements ExtendedLength, MultiSelectable {
 
     private static final byte CLA_ISO7816_NO_SM_NO_CHAN = (byte) 0x80;
@@ -143,7 +142,6 @@ public class FiraApplet extends Applet implements ExtendedLength, MultiSelectabl
         receiveIncoming(apdu);
     }
 
-    @Override
     public void process(APDU apdu) {
 
         try {
@@ -178,12 +176,10 @@ public class FiraApplet extends Applet implements ExtendedLength, MultiSelectabl
         }
     }
 
-    @Override
     public boolean select(boolean b) {
         return false;
     }
 
-    @Override
     public void deselect(boolean b) {
 
     }

@@ -31,7 +31,6 @@ import javacard.framework.JCSystem;
  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
  ******************************************************************************/
-@SuppressWarnings("FieldCanBeLocal")
 public class BerArrayLinkList {
     private short size;
     private short maxSize;
@@ -69,7 +68,7 @@ public class BerArrayLinkList {
         if (newList) {
             returnPtr = (short) (START_OFFSET + offset);
             offset += (BLOCK_SIZE + START_OFFSET);
-            llBuffer[returnPtr + ROOT_OFFSET] = llBuffer[returnPtr + TAIL_OFFSET] = -1;
+            llBuffer[(short)(returnPtr + ROOT_OFFSET)] = llBuffer[((short)(returnPtr + TAIL_OFFSET))] = -1;
         } else {
             returnPtr = offset;
             offset += BLOCK_SIZE;
@@ -82,10 +81,10 @@ public class BerArrayLinkList {
                              short lengthOffset, short length,
                              short tlvPtrOffset, short subLinkListPtr) {
         llBuffer[tlvPtrOffset] = tagOffset;
-        llBuffer[tlvPtrOffset + 1] = tagByteLength;
-        llBuffer[tlvPtrOffset + 2] = lengthOffset;
-        llBuffer[tlvPtrOffset + 3] = length;
-        llBuffer[tlvPtrOffset + 4] = subLinkListPtr;
+        llBuffer[(short)(tlvPtrOffset + 1)] = tagByteLength;
+        llBuffer[(short)(tlvPtrOffset + 2)] = lengthOffset;
+        llBuffer[(short)(tlvPtrOffset + 3)] = length;
+        llBuffer[(short)(tlvPtrOffset + 4)] = subLinkListPtr;
     }
 
     public void addToTop(short tlvPtrOffset) {
@@ -95,41 +94,41 @@ public class BerArrayLinkList {
     public void addToBottom(short berTlvPtr, short firstElementOffset) {
         /* TODO: Corner condition check */
 
-        if (llBuffer[firstElementOffset + ROOT_OFFSET] == -1) {
-            llBuffer[firstElementOffset + ROOT_OFFSET] = llBuffer[firstElementOffset + TAIL_OFFSET] = berTlvPtr;
+        if (llBuffer[(short) (firstElementOffset + ROOT_OFFSET)] == -1) {
+            llBuffer[(short)(firstElementOffset + ROOT_OFFSET)] = llBuffer[(short)(firstElementOffset + TAIL_OFFSET)] = berTlvPtr;
         } else {
-            short tailOffset = llBuffer[firstElementOffset + TAIL_OFFSET];
+            short tailOffset = llBuffer[(short)(firstElementOffset + TAIL_OFFSET)];
 
-            llBuffer[tailOffset + 5] = berTlvPtr;
-            llBuffer[firstElementOffset + TAIL_OFFSET] = berTlvPtr;
+            llBuffer[(short)(tailOffset + 5)] = berTlvPtr;
+            llBuffer[(short)(firstElementOffset + TAIL_OFFSET)] = berTlvPtr;
         }
-        llBuffer[berTlvPtr + 5] = -1; // NULL
+        llBuffer[(short)(berTlvPtr + 5)] = -1; // NULL
         size++;
     }
 
-    public void printAllTags(byte[] buffer) {
-        printTLV(START_OFFSET, buffer);
-    }
+//    public void printAllTags(byte[] buffer) {
+//        printTLV(START_OFFSET, buffer);
+//    }
 
-    /* TODO: Remove this function /  printing statements */
-    private void printTLV(short OffSet, byte[] buffer) {
-        short next = llBuffer[OffSet + ROOT_OFFSET];
-
-        while (next != -1) {
-
-            if (llBuffer[next + 4] != -1) {
-                System.out.println("Constructed data Object: "
-                        + "FirstTagByte=[" + buffer[llBuffer[next]] + "] "+ " TagByteCnt=" + llBuffer[next + 1]
-                        +" TotalLength="+ llBuffer[next + 3] + "\n{ ");
-                printTLV(llBuffer[next + 4], buffer);
-                System.out.println("}");
-            } else {
-                System.out.println("TAG=[" + buffer[llBuffer[next]] + "] "+ " TagByteCnt=" + llBuffer[next + 1]
-                        +" firstByteLength="+ buffer[llBuffer[next + 2]] +" TotalLength="+ llBuffer[next + 3]);
-            }
-            next = llBuffer[next + 5];
-        }
-    }
+//    /* TODO: Remove this function /  printing statements */
+//    private void printTLV(short OffSet, byte[] buffer) {
+//        short next = llBuffer[OffSet + ROOT_OFFSET];
+//
+//        while (next != -1) {
+//
+//            if (llBuffer[next + 4] != -1) {
+//                System.out.println("Constructed data Object: "
+//                        + "FirstTagByte=[" + buffer[llBuffer[next]] + "] "+ " TagByteCnt=" + llBuffer[next + 1]
+//                        +" TotalLength="+ llBuffer[next + 3] + "\n{ ");
+//                printTLV(llBuffer[next + 4], buffer);
+//                System.out.println("}");
+//            } else {
+//                System.out.println("TAG=[" + buffer[llBuffer[next]] + "] "+ " TagByteCnt=" + llBuffer[next + 1]
+//                        +" firstByteLength="+ buffer[llBuffer[next + 2]] +" TotalLength="+ llBuffer[next + 3]);
+//            }
+//            next = llBuffer[next + 5];
+//        }
+//    }
 
     public short getTLVInstance(short tlvOffset, short fromPtr) {
         short tmp = tlvOffset;
@@ -139,7 +138,7 @@ public class BerArrayLinkList {
             ptr = fromPtr;
 
         while (0 != (tmp--)) {
-            ptr = llBuffer[ptr + 5];
+            ptr = llBuffer[(short)(ptr + 5)];
         }
 
         //return llBuffer[ptr];
@@ -147,7 +146,7 @@ public class BerArrayLinkList {
     }
 
     public short getNextTag(short fromPtr) {
-        return llBuffer[fromPtr + 5];
+        return llBuffer[(short)(fromPtr + 5)];
     }
 
     public short getTagOffset(short tlvOffset) {
@@ -155,7 +154,7 @@ public class BerArrayLinkList {
     }
 
     public short getLength(short tlvPtr) {
-        return llBuffer[tlvPtr + 3];
+        return llBuffer[(short)(tlvPtr + 3)];
     }
 
 

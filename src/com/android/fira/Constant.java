@@ -1,4 +1,4 @@
-package com.android.fira.applet;
+package com.android.fira;
 
 public final class Constant {
     /* UWB_CONTROLEE_INFO start */

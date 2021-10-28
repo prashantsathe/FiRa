@@ -1,5 +1,7 @@
 package com.android.ber;
 
+import javacard.framework.Util;
+
 public class BerTlvBuilder {
 
     private BerStack berStack;
@@ -19,16 +21,16 @@ public class BerTlvBuilder {
         short rOffset = bufferOffset;
 
         /* Return if buffer overflow is going to happen */
-        if ((rOffset + tagLength + tlvLength) > bufferLength) return bufferOffset;
+        if ((short)(rOffset + tagLength + tlvLength) > bufferLength) return bufferOffset;
 
         for (short i = 0; i < tagLength ; i++) {
-            buffer[rOffset++] = tag[i + tagOffset];
+            buffer[rOffset++] = tag[(short)(i + tagOffset)];
         }
 
         rOffset += fillLength(buffer, tlvLength, rOffset);
 
         for (short i = 0; i < tlvLength ; i++) {
-            buffer[rOffset++] = tlv[i + tlvOffset];
+            buffer[rOffset++] = tlv[(short)(i + tlvOffset)];
         }
 
         return rOffset;
@@ -38,7 +40,7 @@ public class BerTlvBuilder {
         short rOffset = offset;
 
         /* Return if buffer overflow is going to happen */
-        if ((rOffset + tag.length + HexLength.length) > buffer.length) return offset;
+        if ((short) (rOffset + tag.length + HexLength.length) > buffer.length) return offset;
 
         for (short i = 0; i < tag.length ; i++) {
             buffer[rOffset++] = tag[i];
@@ -59,13 +61,15 @@ public class BerTlvBuilder {
         short lengthBytesCnt = getLengthByteCnt((short) (offset - startOffset));
 
         /* Return if buffer overflow is going to happen */
-        if ((rOffset + tag.length) > buffer.length) return offset;
+        if ((short) (rOffset + tag.length) > buffer.length) return offset;
 
-        System.arraycopy(buffer, startOffset, buffer, startOffset + tag.length + lengthBytesCnt,
-                                                        offset - startOffset);
+        //System.arraycopy(buffer, startOffset, buffer, startOffset + tag.length + lengthBytesCnt,
+        //                                                offset - startOffset);
+        Util.arrayCopy(buffer, startOffset, buffer, (short) (startOffset + tag.length + lengthBytesCnt),
+                								(short)(offset - startOffset));
         rOffset += (tag.length + lengthBytesCnt);
 
-        for (short i = startOffset, j =0 ; i < (tag.length + startOffset) ; i++) {
+        for (short i = startOffset, j =0 ; i < (short)(tag.length + startOffset) ; i++) {
             buffer[i] = tag[j++];
         }
 
@@ -87,31 +91,43 @@ public class BerTlvBuilder {
             buffer[offset] = (byte) length;
         } else if (length <0x100) {
             buffer[offset] = (byte) 0x81;
-            buffer[offset+1] = (byte) length;
+            buffer[(short) (offset+1)] = (byte) length;
             byteCnt = 2;
-        } else if (length < 0x10000) {
-            buffer[offset]   = (byte) 0x82;
-            buffer[offset + 1] = (byte) (length / 0x100);
-            buffer[offset + 2] = (byte) (length % 0x100);
-            byteCnt = 3;
-        } else if (length < 0x1000000) {
-            buffer[offset]   = (byte) 0x83;
-            buffer[offset + 1] = (byte) (length / 0x10000);
-            buffer[offset + 2] = (byte) (length / 0x100);
-            buffer[offset + 3] = (byte) (length % 0x100);
-            byteCnt = 4;
         } else {
-            throw new IllegalStateException("length ["+length+"] out of range (0x1000000)");
+        	buffer[offset]   = (byte) 0x82;
+        	buffer[(short)(offset + 1)] = (byte) (length / 0x100);
+        	buffer[(short)(offset + 2)] = (byte) (length % 0x100);
+        	byteCnt = 3;
         }
+//        } else if (length < 0x10000) {
+//            buffer[offset]   = (byte) 0x82;
+//            buffer[(short)(offset + 1)] = (byte) (length / 0x100);
+//            buffer[(short)(offset + 2)] = (byte) (length % 0x100);
+//            byteCnt = 3;
+//        } else if (length < 0x1000000) {
+//            buffer[offset]   = (byte) 0x83;
+//            buffer[(short)(offset + 1)] = (byte) (length / 0x10000);
+//            buffer[(short)(offset + 2)] = (byte) (length / 0x100);
+//            buffer[(short)(offset + 3)] = (byte) (length % 0x100);
+//            byteCnt = 4;
+//        } else {
+//            // throw new IllegalStateException("length ["+length+"] out of range (0x1000000)");
+//        }
 
         return byteCnt;
     }
 
     private short getLengthByteCnt(short length) {
-        if (length < 0x80) return 1;
-        else if (length <0x100) return 2;
-        else if (length < 0x10000) return 3;
-        else return 4;
+        if (length < 0x80) 
+        	return 1;
+        else if (length <0x100)
+        	return 2;
+        else 
+        	return 3;
+//        else if (length < 0x10000)
+//        	return 3;
+//        else 
+//        	return 4;
         /* TODO: exception*/
     }
 }

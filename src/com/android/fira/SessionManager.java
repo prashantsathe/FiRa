@@ -1,4 +1,4 @@
-package com.android.fira.applet;
+package com.android.fira;
 
 import javacard.framework.JCSystem;
 

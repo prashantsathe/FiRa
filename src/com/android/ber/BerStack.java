@@ -48,6 +48,6 @@ public class BerStack {
     }
 
     public boolean isFull() {
-        return top == size - 1;
+        return top == (short)(size - 1);
     }
 }

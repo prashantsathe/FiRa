@@ -1,10 +1,9 @@
-package com.android.fira.applet;
+package com.android.fira;
 
 import com.android.ber.BerArrayLinkList;
 import com.android.ber.BerTlvParser;
 import javacard.framework.Util;
 
-@SuppressWarnings("FieldCanBeLocal")
 public class ADFManager {
     private BerTlvParser mBerTlvParser;
     private static CryptoManager mCryptoManager;
@@ -35,7 +34,7 @@ public class ADFManager {
         swapOidOffset += mBerTlvParser.getDataLength(heapBuffer, (short) (offSetHeapBuffer + 1));
 
         /* Check UWB info */
-        if (heapBuffer[swapOidOffset] != (byte) 0xBF || heapBuffer[swapOidOffset + 1] != 0x70) return false;
+        if (heapBuffer[swapOidOffset] != (byte) 0xBF || heapBuffer[(short)(swapOidOffset + 1)] != 0x70) return false;
 
         // length calculation, UWB tag bytes count is 2
         swapUWBOffset += 2;
@@ -43,7 +42,7 @@ public class ADFManager {
         swapUWBOffset += mBerTlvParser.getDataLength(heapBuffer, (short) (offSetHeapBuffer + swapOidOffset + 2));
 
         short swapSecureBlob = (short) (swapOidOffset + swapUWBOffset);
-        if (heapBuffer[swapSecureBlob] != (byte) 0xDF || heapBuffer[swapSecureBlob + 1] != 0x51) return false;
+        if (heapBuffer[swapSecureBlob] != (byte) 0xDF || heapBuffer[(short)(swapSecureBlob + 1)] != 0x51) return false;
 
         // length calculation, secure Blob tag bytes count is 2,
         short secureBlobByteLengthCount =  mBerTlvParser.getTotalLengthBytesCount(heapBuffer, (short) (swapSecureBlob + 2));
