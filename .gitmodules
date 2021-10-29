@@ -1,0 +1,3 @@
+[submodule "SusApplets"]
+	path = SusApplets
+	url = git@github.com:prashantsathe/SusApplets.git
