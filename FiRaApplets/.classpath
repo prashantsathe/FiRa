@@ -2,5 +2,7 @@
 <classpath>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="com.nxp.id.jcop.eclipse.containers.cardconfig/com.nxp.id.jcop.eclipse.cardconfigs.custom;com.nxp.id.jcop.eclipse.cardapis.jc305;com.nxp.id.jcop.eclipse.cardapis.gp230;com.nxp.id.jcop.eclipse.cardapis.R1.55.1"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/SusApplets"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/BERLibrary"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
