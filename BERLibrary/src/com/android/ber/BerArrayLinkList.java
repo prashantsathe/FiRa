@@ -8,8 +8,8 @@ import javacard.framework.JCSystem;
  Struct {
     short tagOffSet
     short tagByteCount
-    short lengthOffset
-    short lengthByteCount
+    short vOffset
+    short vlength
     short nextSubLinkListOffset --> Set for constructed data object otherwise set to -1
     short NextOffset
  }
@@ -18,16 +18,16 @@ import javacard.framework.JCSystem;
  Array based LinkList Example (All information are stored in Array)
  First two short data Elements are used as a link list reference pointers to root and tail of the list
 --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-| Root Ptr | tail Ptr | tagOffSet  | tagByteCount | lengthOffset | lengthByteCount | nextSubLinkListOffset | NextOffset| {Next structure data} | {Next structure data} |
-| (Offset) | (Offset) |            |              |              |                 |          |            |  -------->|---------------------->|---------------------->NULL
-----------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------
-                                                                                              |
-                            |-----------------------------------------------------------------|
+| Root Ptr | tail Ptr | tagOffSet  | tagByteCount | vOffset | vlength | nextSubLinkListOffset | NextOffset| {Next structure data} | {Next structure data} |
+| (Offset) | (Offset) |            |              |         |         |          |            |  -------->|---------------------->|---------------------->NULL
+---------------------------------------------------------------------------------|---------------------------------------------------------------------------------
+                                                                                 |
+                            |----------------------------------------------------|
                             |
                             V
  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- | Root Ptr | tail Ptr | tagOffSet  | tagByteCount | lengthOffset | lengthByteCount | nextSubLinkListOffset | NextOffset |  {Next structure data} | {Next structure data} |
- | (Offset) | (Offset) |            |              |              |                 |                       |            |                        |                       |
+ | Root Ptr | tail Ptr | tagOffSet  | tagByteCount | vOffset | vlength  | nextSubLinkListOffset | NextOffset |  {Next structure data} | {Next structure data} |
+ | (Offset) | (Offset) |            |              |         |          |                       |            |                        |                       |
  --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
  ******************************************************************************/
@@ -41,10 +41,14 @@ public class BerArrayLinkList {
     private final short ROOT_OFFSET = -2;
     private final short TAIL_OFFSET = -1;
 
-    public final static short BLOCK_SIZE = (1/* Tag offset */       + 1 /* tag byte count*/) +
-                                            (1/* length offset */    + 1 /* length */) +
+    public final static short BLOCK_SIZE =  (1/* Tag offset */       + 1 /* tag byte count*/) +
+                                            (1/* value offset */     + 1 /* vLength */) +
                                             (1/* Next Sub-linklist*/ + 1 /* Next offset */);
 
+    public BerArrayLinkList() {
+    	AllocateLinkList(DEFAULT_SIZE);
+    }
+    
     public void AllocateLinkList() {
         AllocateLinkList(DEFAULT_SIZE);
     }
@@ -57,7 +61,7 @@ public class BerArrayLinkList {
         this.maxSize = size;
         this.size = 0;
         this.offset = START_OFFSET;
-        llBuffer = JCSystem.makeTransientShortArray((short) (size * BLOCK_SIZE), JCSystem.CLEAR_ON_DESELECT);
+        llBuffer = (short []) JCSystem.makeTransientShortArray((short) (size * BLOCK_SIZE), JCSystem.CLEAR_ON_RESET);
         llBuffer[0] = llBuffer[1] = -1; // Root&Tail to -1/null
     }
 
@@ -78,12 +82,12 @@ public class BerArrayLinkList {
     }
 
     public void createBerTlv(short tagOffset, short tagByteLength,
-                             short lengthOffset, short length,
+                             short vOffset, short vlength,
                              short tlvPtrOffset, short subLinkListPtr) {
         llBuffer[tlvPtrOffset] = tagOffset;
         llBuffer[(short)(tlvPtrOffset + 1)] = tagByteLength;
-        llBuffer[(short)(tlvPtrOffset + 2)] = lengthOffset;
-        llBuffer[(short)(tlvPtrOffset + 3)] = length;
+        llBuffer[(short)(tlvPtrOffset + 2)] = vOffset;
+        llBuffer[(short)(tlvPtrOffset + 3)] = vlength;
         llBuffer[(short)(tlvPtrOffset + 4)] = subLinkListPtr;
     }
 
@@ -106,30 +110,6 @@ public class BerArrayLinkList {
         size++;
     }
 
-//    public void printAllTags(byte[] buffer) {
-//        printTLV(START_OFFSET, buffer);
-//    }
-
-//    /* TODO: Remove this function /  printing statements */
-//    private void printTLV(short OffSet, byte[] buffer) {
-//        short next = llBuffer[OffSet + ROOT_OFFSET];
-//
-//        while (next != -1) {
-//
-//            if (llBuffer[next + 4] != -1) {
-//                System.out.println("Constructed data Object: "
-//                        + "FirstTagByte=[" + buffer[llBuffer[next]] + "] "+ " TagByteCnt=" + llBuffer[next + 1]
-//                        +" TotalLength="+ llBuffer[next + 3] + "\n{ ");
-//                printTLV(llBuffer[next + 4], buffer);
-//                System.out.println("}");
-//            } else {
-//                System.out.println("TAG=[" + buffer[llBuffer[next]] + "] "+ " TagByteCnt=" + llBuffer[next + 1]
-//                        +" firstByteLength="+ buffer[llBuffer[next + 2]] +" TotalLength="+ llBuffer[next + 3]);
-//            }
-//            next = llBuffer[next + 5];
-//        }
-//    }
-
     public short getTLVInstance(short tlvOffset, short fromPtr) {
         short tmp = tlvOffset;
         short ptr = llBuffer[2 + ROOT_OFFSET];
@@ -141,7 +121,6 @@ public class BerArrayLinkList {
             ptr = llBuffer[(short)(ptr + 5)];
         }
 
-        //return llBuffer[ptr];
         return ptr;
     }
 
@@ -153,9 +132,27 @@ public class BerArrayLinkList {
         return llBuffer[tlvOffset];
     }
 
+    public short getValueOffset(short tlvOffset) {
+        return llBuffer[(short) (tlvOffset + 2)];
+    }
+    
     public short getLength(short tlvPtr) {
         return llBuffer[(short)(tlvPtr + 3)];
     }
 
+    public short getTotalTlvLength(short tlvPtr) {
+    	
+    	short lengthByteCount;
+    	
+    	if (llBuffer[(short)(tlvPtr + 3)] < 128) {
+    		lengthByteCount = 1;
+		} else if (llBuffer[(short)(tlvPtr + 3)] < 256) {
+			lengthByteCount = 2;
+		} else {
+			lengthByteCount = 3;
+		}
+    	
+    	return (short) (llBuffer[(short)(tlvPtr + 1)] +  llBuffer[(short)(tlvPtr + 3)] + lengthByteCount);
+    }
 
 }

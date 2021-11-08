@@ -10,13 +10,16 @@ public class BerTlvParser {
     }
 
     public BerArrayLinkList parser(byte[] buffer, short offset, short length) {
+    	
         short berTlvPtr = -1;
 
         if ((countNumberOfTags(buffer, offset, length) == 0) || length == 0) return null;
 
         short tOffset = offset;
         short startLLOffset = 2;
-        tlvsLL.AllocateLinkList();
+        
+        /* TODO need Memory management for Allocating memory at run time */
+        // tlvsLL.AllocateLinkList();
 
         /* TODO:- while(offset < length - 1) or max 100, release library has max 100 */
         for (short i = 0; i < 100 ; i++) {
@@ -35,23 +38,12 @@ public class BerTlvParser {
         return tlvsLL;
     }
 
-    private short countNumberOfTags(byte[] buffer, short offset, short length) {
-        short count = 0, tOffset = offset, tagByteCnt = 0, lengthByteCnt = 0, valueCount = 0;
-
-        while (tOffset < (short)(length + offset)) {
-            if (buffer[tOffset] == 0) break;
-
-            tagByteCnt =  getTotalTagBytesCount(buffer, tOffset);
-            lengthByteCnt = getTotalLengthBytesCount(buffer, (short) (tOffset + tagByteCnt));
-            valueCount = getDataLength(buffer, (short) (tOffset + tagByteCnt));
-
-            tOffset +=(tagByteCnt +lengthByteCnt + valueCount);
-            count++;
-        }
-        return count;
+    public BerArrayLinkList getBerArrayLinkList() {
+    	return tlvsLL;
     }
 
     public short getTotalLengthBytesCount(byte[] buffer, short offset) {
+    	
         short len = (short) (buffer[offset] & 0xff);
 
         if ((len & 0x80) == 0x80) {
@@ -82,6 +74,7 @@ public class BerTlvParser {
     }
 
     public short getTotalTagBytesCount(byte[] buffer, short offset) {
+    	
         if ((buffer[offset] & 0x1F) == 0x1F) { // see subsequent bytes
             short len = 2;
             for(short i = (short) (offset + 1); i < (short) (offset + 10); i++) {
@@ -131,6 +124,7 @@ public class BerTlvParser {
     }
 
     private short addSubListBerTlv(byte[] buffer, short offset, short valueLength, short tlvParentOffset) {
+    	
         short startPosition = offset;
         short len = valueLength;
         short retOffset = -1; // represent First offset of list
@@ -148,5 +142,22 @@ public class BerTlvParser {
         }
 
         return retOffset;
+    }
+    
+    private short countNumberOfTags(byte[] buffer, short offset, short length) {
+    	
+        short count = 0, tOffset = offset, tagByteCnt = 0, lengthByteCnt = 0, valueCount = 0;
+
+        while (tOffset < (short)(length + offset)) {
+            if (buffer[tOffset] == 0) break;
+
+            tagByteCnt =  getTotalTagBytesCount(buffer, tOffset);
+            lengthByteCnt = getTotalLengthBytesCount(buffer, (short) (tOffset + tagByteCnt));
+            valueCount = getDataLength(buffer, (short) (tOffset + tagByteCnt));
+
+            tOffset +=(tagByteCnt +lengthByteCnt + valueCount);
+            count++;
+        }
+        return count;
     }
 }
