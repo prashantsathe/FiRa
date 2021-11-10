@@ -63,8 +63,6 @@ public class BerTlvBuilder {
         /* Return if buffer overflow is going to happen */
         if ((short) (rOffset + tag.length) > buffer.length) return offset;
 
-        //System.arraycopy(buffer, startOffset, buffer, startOffset + tag.length + lengthBytesCnt,
-        //                                                offset - startOffset);
         Util.arrayCopy(buffer, startOffset, buffer, (short) (startOffset + tag.length + lengthBytesCnt),
                 								(short)(offset - startOffset));
         rOffset += (tag.length + lengthBytesCnt);
@@ -73,7 +71,7 @@ public class BerTlvBuilder {
             buffer[i] = tag[j++];
         }
 
-                                        /* Actual length */
+                                    /* Actual length */
         fillLength(buffer, (short) (offset - startOffset), (short) (startOffset + tag.length));
 
         return rOffset;

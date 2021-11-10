@@ -13,6 +13,7 @@ public class BerTlvParser {
     	
         short berTlvPtr = -1;
 
+        tlvsLL.resetLinkList();
         if ((countNumberOfTags(buffer, offset, length) == 0) || length == 0) return null;
 
         short tOffset = offset;

@@ -1,6 +1,7 @@
 package com.android.ber;
 
 import javacard.framework.JCSystem;
+import javacard.framework.Util;
 
 /******************************************************************************
  * Array index based Link list structure
@@ -91,8 +92,8 @@ public class BerArrayLinkList {
         llBuffer[(short)(tlvPtrOffset + 4)] = subLinkListPtr;
     }
 
-    public void addToTop(short tlvPtrOffset) {
-
+    public void resetLinkList() {
+        llBuffer[0] = -1; llBuffer[1] = -1;
     }
 
     public void addToBottom(short berTlvPtr, short firstElementOffset) {
@@ -106,6 +107,7 @@ public class BerArrayLinkList {
             llBuffer[(short)(tailOffset + 5)] = berTlvPtr;
             llBuffer[(short)(firstElementOffset + TAIL_OFFSET)] = berTlvPtr;
         }
+
         llBuffer[(short)(berTlvPtr + 5)] = -1; // NULL
         size++;
     }
