@@ -49,19 +49,17 @@ public class BerArrayLinkList {
     public BerArrayLinkList() {
     	AllocateLinkList(DEFAULT_SIZE);
     }
-    
-    public void AllocateLinkList() {
-        AllocateLinkList(DEFAULT_SIZE);
-    }
 
     public void AllocateLinkList(short size) {
         allocateBERLinkList(size);
     }
 
     private void allocateBERLinkList(short size) {
+        // TODO: Change allocation to transient memory
         this.maxSize = size;
         this.size = 0;
         this.offset = START_OFFSET;
+        //
         llBuffer = (short []) JCSystem.makeTransientShortArray((short) (size * BLOCK_SIZE), JCSystem.CLEAR_ON_RESET);
         llBuffer[0] = llBuffer[1] = -1; // Root&Tail to -1/null
     }
@@ -93,6 +91,8 @@ public class BerArrayLinkList {
     }
 
     public void resetLinkList() {
+        this.size = 0;
+        this.offset = START_OFFSET;
         llBuffer[0] = -1; llBuffer[1] = -1;
     }
 
