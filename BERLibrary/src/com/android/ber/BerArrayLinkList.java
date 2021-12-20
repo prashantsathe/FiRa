@@ -33,10 +33,9 @@ import javacard.framework.Util;
 
  ******************************************************************************/
 public class BerArrayLinkList {
-    private short size;
-    private short maxSize;
-    private short offset;
-    private short[] llBuffer;
+
+    private short[] mSizeInfo;
+    private short[] mLLBuffer;
     private final short DEFAULT_SIZE = 20;
     private final short START_OFFSET = 2;
     private final short ROOT_OFFSET = -2;
@@ -55,26 +54,30 @@ public class BerArrayLinkList {
     }
 
     private void allocateBERLinkList(short size) {
-        // TODO: Change allocation to transient memory
-        this.maxSize = size;
-        this.size = 0;
-        this.offset = START_OFFSET;
-        //
-        llBuffer = (short []) JCSystem.makeTransientShortArray((short) (size * BLOCK_SIZE), JCSystem.CLEAR_ON_RESET);
-        llBuffer[0] = llBuffer[1] = -1; // Root&Tail to -1/null
+        // mSizeInfo is a 3 short sized array with following information
+        // 0 - size
+        // 1 - max Size
+        // 2 - offset
+        mSizeInfo = (short []) JCSystem.makeTransientShortArray((short) 3, JCSystem.CLEAR_ON_RESET);
+        this.mSizeInfo[0] = 0;
+        this.mSizeInfo[1] = size;
+        this.mSizeInfo[2] = START_OFFSET;
+
+        mLLBuffer = (short []) JCSystem.makeTransientShortArray((short) (size * BLOCK_SIZE), JCSystem.CLEAR_ON_RESET);
+        mLLBuffer[0] = mLLBuffer[1] = -1; // Root&Tail to -1/null
     }
 
     public short allocateBerTlv(boolean newList) {
         short returnPtr = -1;
-        if (this.size >= maxSize) return returnPtr;
+        if (this.mSizeInfo[0] >= mSizeInfo[1]) return returnPtr;
 
         if (newList) {
-            returnPtr = (short) (START_OFFSET + offset);
-            offset += (BLOCK_SIZE + START_OFFSET);
-            llBuffer[(short)(returnPtr + ROOT_OFFSET)] = llBuffer[((short)(returnPtr + TAIL_OFFSET))] = -1;
+            returnPtr = (short) (START_OFFSET + mSizeInfo[2]);
+            mSizeInfo[2] += (BLOCK_SIZE + START_OFFSET);
+            mLLBuffer[(short)(returnPtr + ROOT_OFFSET)] = mLLBuffer[((short)(returnPtr + TAIL_OFFSET))] = -1;
         } else {
-            returnPtr = offset;
-            offset += BLOCK_SIZE;
+            returnPtr = mSizeInfo[2];
+            mSizeInfo[2] += BLOCK_SIZE;
         }
 
         return returnPtr;
@@ -83,78 +86,78 @@ public class BerArrayLinkList {
     public void createBerTlv(short tagOffset, short tagByteLength,
                              short vOffset, short vlength,
                              short tlvPtrOffset, short subLinkListPtr) {
-        llBuffer[tlvPtrOffset] = tagOffset;
-        llBuffer[(short)(tlvPtrOffset + 1)] = tagByteLength;
-        llBuffer[(short)(tlvPtrOffset + 2)] = vOffset;
-        llBuffer[(short)(tlvPtrOffset + 3)] = vlength;
-        llBuffer[(short)(tlvPtrOffset + 4)] = subLinkListPtr;
+        mLLBuffer[tlvPtrOffset] = tagOffset;
+        mLLBuffer[(short)(tlvPtrOffset + 1)] = tagByteLength;
+        mLLBuffer[(short)(tlvPtrOffset + 2)] = vOffset;
+        mLLBuffer[(short)(tlvPtrOffset + 3)] = vlength;
+        mLLBuffer[(short)(tlvPtrOffset + 4)] = subLinkListPtr;
     }
 
     public void resetLinkList() {
-        this.size = 0;
-        this.offset = START_OFFSET;
-        llBuffer[0] = -1; llBuffer[1] = -1;
+        this.mSizeInfo[0] = 0;
+        this.mSizeInfo[2] = START_OFFSET;
+        mLLBuffer[0] = -1; mLLBuffer[1] = -1;
     }
 
     public void addToBottom(short berTlvPtr, short firstElementOffset) {
         /* TODO: Corner condition check */
 
-        if (llBuffer[(short) (firstElementOffset + ROOT_OFFSET)] == -1) {
-            llBuffer[(short)(firstElementOffset + ROOT_OFFSET)] = llBuffer[(short)(firstElementOffset + TAIL_OFFSET)] = berTlvPtr;
+        if (mLLBuffer[(short) (firstElementOffset + ROOT_OFFSET)] == -1) {
+            mLLBuffer[(short)(firstElementOffset + ROOT_OFFSET)] = mLLBuffer[(short)(firstElementOffset + TAIL_OFFSET)] = berTlvPtr;
         } else {
-            short tailOffset = llBuffer[(short)(firstElementOffset + TAIL_OFFSET)];
+            short tailOffset = mLLBuffer[(short)(firstElementOffset + TAIL_OFFSET)];
 
-            llBuffer[(short)(tailOffset + 5)] = berTlvPtr;
-            llBuffer[(short)(firstElementOffset + TAIL_OFFSET)] = berTlvPtr;
+            mLLBuffer[(short)(tailOffset + 5)] = berTlvPtr;
+            mLLBuffer[(short)(firstElementOffset + TAIL_OFFSET)] = berTlvPtr;
         }
 
-        llBuffer[(short)(berTlvPtr + 5)] = -1; // NULL
-        size++;
+        mLLBuffer[(short)(berTlvPtr + 5)] = -1; // NULL
+        mSizeInfo[0]++;
     }
 
     public short getTLVInstance(short tlvOffset, short fromPtr) {
         short tmp = tlvOffset;
-        short ptr = llBuffer[2 + ROOT_OFFSET];
+        short ptr = mLLBuffer[2 + ROOT_OFFSET];
 
         if (fromPtr == -1)
             ptr = fromPtr;
 
         while (0 != (tmp--)) {
-            ptr = llBuffer[(short)(ptr + 5)];
+            ptr = mLLBuffer[(short)(ptr + 5)];
         }
 
         return ptr;
     }
 
     public short getNextTag(short fromPtr) {
-        return llBuffer[(short)(fromPtr + 5)];
+        return mLLBuffer[(short)(fromPtr + 5)];
     }
 
     public short getTagOffset(short tlvOffset) {
-        return llBuffer[tlvOffset];
+        return mLLBuffer[tlvOffset];
     }
 
     public short getValueOffset(short tlvOffset) {
-        return llBuffer[(short) (tlvOffset + 2)];
+        return mLLBuffer[(short) (tlvOffset + 2)];
     }
     
     public short getLength(short tlvPtr) {
-        return llBuffer[(short)(tlvPtr + 3)];
+        return mLLBuffer[(short)(tlvPtr + 3)];
     }
 
     public short getTotalTlvLength(short tlvPtr) {
     	
     	short lengthByteCount;
     	
-    	if (llBuffer[(short)(tlvPtr + 3)] < 128) {
+    	if (mLLBuffer[(short)(tlvPtr + 3)] < 128) {
     		lengthByteCount = 1;
-		} else if (llBuffer[(short)(tlvPtr + 3)] < 256) {
+		} else if (mLLBuffer[(short)(tlvPtr + 3)] < 256) {
 			lengthByteCount = 2;
 		} else {
 			lengthByteCount = 3;
 		}
     	
-    	return (short) (llBuffer[(short)(tlvPtr + 1)] +  llBuffer[(short)(tlvPtr + 3)] + lengthByteCount);
+    	return (short) (mLLBuffer[(short)(tlvPtr + 1)] +  mLLBuffer[(short)(tlvPtr + 3)] + lengthByteCount);
     }
 
 }
