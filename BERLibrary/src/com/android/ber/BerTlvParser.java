@@ -14,7 +14,7 @@ public class BerTlvParser {
         mGlobalOffset[0] = 0;
     }
 
-    public BerArrayLinkList parser(byte[] buffer, short offset, short length) {
+    public BerArrayLinkList parse(byte[] buffer, short offset, short length) {
 
         short berTlvPtr = -1;
 

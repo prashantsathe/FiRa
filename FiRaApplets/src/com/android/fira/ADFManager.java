@@ -57,7 +57,7 @@ public class ADFManager {
             return false;
         }
 
-        BerArrayLinkList berList = mBerTlvParser.parser(buffer, offSetBuffer,
+        BerArrayLinkList berList = mBerTlvParser.parse(buffer, offSetBuffer,
                                 (short) (swapSecureBlob + 2 + secureBlobByteLengthCount + Constant.ADF_PACS_PROFILE_SIZE));
 
         /* Error message and error response */

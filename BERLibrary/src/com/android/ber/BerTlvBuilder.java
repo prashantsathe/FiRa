@@ -5,7 +5,7 @@ import javacard.framework.Util;
 public class BerTlvBuilder {
 
     private BerStack berStack;
-    private final short DEFAULT_STACK_SIZE = 20;
+    private static final short DEFAULT_STACK_SIZE = 20;
 
     public BerTlvBuilder() {
         berStack = new BerStack(DEFAULT_STACK_SIZE);
