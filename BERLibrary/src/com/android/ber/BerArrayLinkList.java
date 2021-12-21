@@ -146,18 +146,18 @@ public class BerArrayLinkList {
     }
 
     public short getTotalTlvLength(short tlvPtr) {
-    	
-    	short lengthByteCount;
-    	
-    	if (mLLBuffer[(short)(tlvPtr + 3)] < 128) {
-    		lengthByteCount = 1;
-		} else if (mLLBuffer[(short)(tlvPtr + 3)] < 256) {
-			lengthByteCount = 2;
-		} else {
-			lengthByteCount = 3;
-		}
-    	
-    	return (short) (mLLBuffer[(short)(tlvPtr + 1)] +  mLLBuffer[(short)(tlvPtr + 3)] + lengthByteCount);
+
+        short lengthByteCount;
+
+        if (mLLBuffer[(short)(tlvPtr + 3)] < 128) {
+            lengthByteCount = 1;
+        } else if (mLLBuffer[(short)(tlvPtr + 3)] < 256) {
+            lengthByteCount = 2;
+        } else {
+            lengthByteCount = 3;
+        }
+
+        return (short) (mLLBuffer[(short)(tlvPtr + 1)] +  mLLBuffer[(short)(tlvPtr + 3)] + lengthByteCount);
     }
 
 }

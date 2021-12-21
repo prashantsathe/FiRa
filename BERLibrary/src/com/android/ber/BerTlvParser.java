@@ -1,52 +1,57 @@
 package com.android.ber;
 
+import javacard.framework.ISO7816;
+import javacard.framework.ISOException;
+import javacard.framework.JCSystem;
+
 public class BerTlvParser {
-    private BerArrayLinkList tlvsLL;
-    private short gOffset;
+    private BerArrayLinkList mTlvsLL;
+    private short mGlobalOffset[];
 
     public BerTlvParser() {
-        tlvsLL = new BerArrayLinkList();
-        gOffset = 0;
+        mTlvsLL = new BerArrayLinkList();
+        mGlobalOffset = (short []) JCSystem.makeTransientShortArray((short) 1, JCSystem.CLEAR_ON_RESET);
+        mGlobalOffset[0] = 0;
     }
 
     public BerArrayLinkList parser(byte[] buffer, short offset, short length) {
-    	
+
         short berTlvPtr = -1;
 
-        tlvsLL.resetLinkList();
-        gOffset = 0;
+        mTlvsLL.resetLinkList();
+        mGlobalOffset[0] = 0;
 
         if ((countNumberOfTags(buffer, offset, length) == 0) || length == 0) return null;
 
         short tOffset = offset;
         short startLLOffset = 2;
-        
-        /* TODO need Memory management for Allocating memory at run time */
-        // tlvsLL.AllocateLinkList();
 
-        /* TODO:- while(offset < length - 1) or max 100, release library has max 100 */
+        /* TODO: need Memory management for Allocating memory at run time
+         * tlvsLL.AllocateLinkList();
+         */
+        // Keeping maximum tags count 100.
         for (short i = 0; i < 100 ; i++) {
             berTlvPtr = getTlvFrom(buffer, tOffset, (short) (length -  tOffset), false);
 
             if(berTlvPtr == -1) break;
-            tlvsLL.addToBottom(berTlvPtr, startLLOffset);
+            mTlvsLL.addToBottom(berTlvPtr, startLLOffset);
 
-            if(gOffset >= (short) (offset + length)) {
+            if(mGlobalOffset[0] >= (short) (offset + length)) {
                 break;
             }
 
-            tOffset = gOffset;
+            tOffset = mGlobalOffset[0];
         }
 
-        return tlvsLL;
+        return mTlvsLL;
     }
 
     public BerArrayLinkList getBerArrayLinkList() {
-    	return tlvsLL;
+    	return mTlvsLL;
     }
 
     public short getTotalLengthBytesCount(byte[] buffer, short offset) {
-    	
+
         short len = (short) (buffer[offset] & 0xff);
 
         if ((len & 0x80) == 0x80) {
@@ -64,7 +69,7 @@ public class BerTlvParser {
             short numberOfBytes = (short) (length & 0x7f);
 
             if (numberOfBytes > 3) {
-                // TODO: throw exception
+                ISOException.throwIt(ISO7816.SW_WRONG_DATA);
             }
 
             length = 0;
@@ -77,7 +82,7 @@ public class BerTlvParser {
     }
 
     public short getTotalTagBytesCount(byte[] buffer, short offset) {
-    	
+
         if ((buffer[offset] & 0x1F) == 0x1F) { // see subsequent bytes
             short len = 2;
             for(short i = (short) (offset + 1); i < (short) (offset + 10); i++) {
@@ -95,39 +100,38 @@ public class BerTlvParser {
     private short getTlvFrom(byte[] buffer, short offset, short len, boolean cObject) {
 
         if (((short)(offset + len) > buffer.length) || buffer[offset] == 0)  {
-            // TODO: throw exception
             return -1;
         }
 
         // Tag calculation
-        short tagBytesCount   = getTotalTagBytesCount(buffer, offset);
-        short tagOffset       = offset;
+        short tagBytesCount = getTotalTagBytesCount(buffer, offset);
+        short tagOffset = offset;
 
         // length calculation
-        short lengthBytesCount  = getTotalLengthBytesCount(buffer, (short) (offset + tagBytesCount));
-        short berLength         = getDataLength(buffer, (short) (offset + tagBytesCount));
+        short lengthBytesCount = getTotalLengthBytesCount(buffer, (short) (offset + tagBytesCount));
+        short berLength = getDataLength(buffer, (short) (offset + tagBytesCount));
 
         short valueOffset = (short) (offset + tagBytesCount + lengthBytesCount);
         short finalOffset = (short) (valueOffset + berLength);
-        gOffset = finalOffset;
+        mGlobalOffset[0] = finalOffset;
 
-        short tlvPtrOffset = tlvsLL.allocateBerTlv(cObject);
+        short tlvPtrOffset = mTlvsLL.allocateBerTlv(cObject);
 
         // value calculation
         // if Bit 5 is set it's a "constructed data object"
         if ((buffer[offset] & 0x20) == 0x20) {
             short newPtrSublistOffset = addSubListBerTlv(buffer, valueOffset, berLength, tlvPtrOffset);
-            tlvsLL.createBerTlv(tagOffset, tagBytesCount, valueOffset, berLength, tlvPtrOffset, newPtrSublistOffset);
-            gOffset = finalOffset;
+            mTlvsLL.createBerTlv(tagOffset, tagBytesCount, valueOffset, berLength, tlvPtrOffset, newPtrSublistOffset);
+            mGlobalOffset[0] = finalOffset;
         } else {
-            tlvsLL.createBerTlv(tagOffset, tagBytesCount, valueOffset, berLength, tlvPtrOffset, (short) -1);
+            mTlvsLL.createBerTlv(tagOffset, tagBytesCount, valueOffset, berLength, tlvPtrOffset, (short) -1);
         }
 
         return tlvPtrOffset;
     }
 
     private short addSubListBerTlv(byte[] buffer, short offset, short valueLength, short tlvParentOffset) {
-    	
+
         short startPosition = offset;
         short len = valueLength;
         short retOffset = -1; // represent First offset of list
@@ -138,17 +142,16 @@ public class BerTlvParser {
             if (retOffset == -1)
                 retOffset = berTlvPtr;
 
-            tlvsLL.addToBottom(berTlvPtr, retOffset);
-            startPosition = gOffset;
-            len           = (short) ((offset + valueLength) - startPosition);
-
+            mTlvsLL.addToBottom(berTlvPtr, retOffset);
+            startPosition = mGlobalOffset[0];
+            len = (short) ((offset + valueLength) - startPosition);
         }
 
         return retOffset;
     }
-    
+
     private short countNumberOfTags(byte[] buffer, short offset, short length) {
-    	
+
         short count = 0, tOffset = offset, tagByteCnt = 0, lengthByteCnt = 0, valueCount = 0;
 
         while (tOffset < (short)(length + offset)) {
@@ -158,7 +161,7 @@ public class BerTlvParser {
             lengthByteCnt = getTotalLengthBytesCount(buffer, (short) (tOffset + tagByteCnt));
             valueCount = getDataLength(buffer, (short) (tOffset + tagByteCnt));
 
-            tOffset +=(tagByteCnt +lengthByteCnt + valueCount);
+            tOffset += (tagByteCnt +lengthByteCnt + valueCount);
             count++;
         }
         return count;
