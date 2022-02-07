@@ -1,7 +1,6 @@
 package com.android.ber;
 
 import javacard.framework.JCSystem;
-import javacard.framework.Util;
 
 /******************************************************************************
  * Array index based Link list structure
@@ -137,12 +136,20 @@ public class BerArrayLinkList {
         return mLLBuffer[tlvOffset];
     }
 
+    public short getTagByteCount(short tlvOffset) {
+        return mLLBuffer[(short) (tlvOffset + 1)];
+    }
+
     public short getValueOffset(short tlvOffset) {
         return mLLBuffer[(short) (tlvOffset + 2)];
     }
-    
+
     public short getLength(short tlvPtr) {
         return mLLBuffer[(short)(tlvPtr + 3)];
+    }
+
+    public short getNextSubLinkOffset(short tlvOffset) {
+        return mLLBuffer[(short) (tlvOffset + 4)];
     }
 
     public short getTotalTlvLength(short tlvPtr) {

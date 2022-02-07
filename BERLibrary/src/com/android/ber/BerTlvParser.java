@@ -50,53 +50,6 @@ public class BerTlvParser {
     	return mTlvsLL;
     }
 
-    public short getTotalLengthBytesCount(byte[] buffer, short offset) {
-
-        short len = (short) (buffer[offset] & 0xff);
-
-        if ((len & 0x80) == 0x80) {
-            return (short) (1 + (len & 0x7f));
-        } else {
-            return 1;
-        }
-    }
-
-    public short getDataLength(byte[] buffer, short offset) {
-
-        short length = (short) (buffer[offset] & 0xff);
-
-        if ((length & 0x80) == 0x80) {
-            short numberOfBytes = (short) (length & 0x7f);
-
-            if (numberOfBytes > 3) {
-                ISOException.throwIt(ISO7816.SW_WRONG_DATA);
-            }
-
-            length = 0;
-            for (short i = (short) (offset + 1); i < (short) (offset + 1 + numberOfBytes); i++) {
-                length = (short) (length * 0x100 + (buffer[i] & 0xff));
-            }
-
-        }
-        return length;
-    }
-
-    public short getTotalTagBytesCount(byte[] buffer, short offset) {
-
-        if ((buffer[offset] & 0x1F) == 0x1F) { // see subsequent bytes
-            short len = 2;
-            for(short i = (short) (offset + 1); i < (short) (offset + 10); i++) {
-                if( (buffer[i] & 0x80) != 0x80) {
-                    break;
-                }
-                len++;
-            }
-            return len;
-        } else {
-            return (short)1;
-        }
-    }
-
     private short getTlvFrom(byte[] buffer, short offset, short len, boolean cObject) {
 
         if (((short)(offset + len) > buffer.length) || buffer[offset] == 0)  {
@@ -150,7 +103,54 @@ public class BerTlvParser {
         return retOffset;
     }
 
-    private short countNumberOfTags(byte[] buffer, short offset, short length) {
+    public static short getTotalTagBytesCount(byte[] buffer, short offset) {
+
+        if ((buffer[offset] & 0x1F) == 0x1F) { // see subsequent bytes
+            short len = 2;
+            for(short i = (short) (offset + 1); i < (short) (offset + 10); i++) {
+                if( (buffer[i] & 0x80) != 0x80) {
+                    break;
+                }
+                len++;
+            }
+            return len;
+        } else {
+            return (short)1;
+        }
+    }
+
+    public static short getTotalLengthBytesCount(byte[] buffer, short offset) {
+
+        short len = (short) (buffer[offset] & 0xff);
+
+        if ((len & 0x80) == 0x80) {
+            return (short) (1 + (len & 0x7f));
+        } else {
+            return 1;
+        }
+    }
+
+    public static short getDataLength(byte[] buffer, short offset) {
+
+        short length = (short) (buffer[offset] & 0xff);
+
+        if ((length & 0x80) == 0x80) {
+            short numberOfBytes = (short) (length & 0x7f);
+
+            if (numberOfBytes > 3) {
+                ISOException.throwIt(ISO7816.SW_WRONG_DATA);
+            }
+
+            length = 0;
+            for (short i = (short) (offset + 1); i < (short) (offset + 1 + numberOfBytes); i++) {
+                length = (short) (length * 0x100 + (buffer[i] & 0xff));
+            }
+
+        }
+        return length;
+    }
+
+    public static short countNumberOfTags(byte[] buffer, short offset, short length) {
 
         short count = 0, tOffset = offset, tagByteCnt = 0, lengthByteCnt = 0, valueCount = 0;
 

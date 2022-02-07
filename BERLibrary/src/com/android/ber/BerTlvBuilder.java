@@ -85,7 +85,7 @@ public class BerTlvBuilder {
     }
 
     /* return number of bytes required for length*/
-    private static short fillLength(byte[] buffer, short length, short offset) {
+    public static short fillLength(byte[] buffer, short length, short offset) {
 
         short byteCnt = 1;
 
