@@ -1,7 +1,8 @@
 package com.android.fira;
 
-import com.android.ber.BerArrayLinkList;
-import com.android.ber.BerTlvParser;
+import com.android.javacard.ber.BerArrayLinkList;
+import com.android.javacard.ber.BerTlvParser;
+
 import javacard.framework.Util;
 
 public class ADFManager {

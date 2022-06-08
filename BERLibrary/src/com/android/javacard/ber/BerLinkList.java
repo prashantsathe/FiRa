@@ -1,4 +1,4 @@
-package com.android.ber;
+package com.android.javacard.ber;
 
 public class BerLinkList {
     private ListObj rootObj;

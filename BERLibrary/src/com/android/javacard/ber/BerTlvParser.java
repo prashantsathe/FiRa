@@ -1,4 +1,4 @@
-package com.android.ber;
+package com.android.javacard.ber;
 
 import javacard.framework.ISO7816;
 import javacard.framework.ISOException;

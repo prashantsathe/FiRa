@@ -1,4 +1,4 @@
-package com.android.ber;
+package com.android.javacard.ber;
 
 import javacard.framework.Util;
 
