@@ -31,7 +31,7 @@ public class BerTlvParser {
          */
         // Keeping maximum tags count 100.
         for (short i = 0; i < 100 ; i++) {
-            berTlvPtr = getTlvFrom(buffer, tOffset, (short) (length -  tOffset), false);
+            berTlvPtr = getTlvFrom(buffer, tOffset, (short) (length - tOffset - offset), false);
 
             if(berTlvPtr == -1) break;
             mTlvsLL.addToBottom(berTlvPtr, startLLOffset);
