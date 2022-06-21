@@ -114,6 +114,7 @@ public class BerArrayLinkList {
         mSizeInfo[0]++;
     }
 
+    /*
     public short getTLVInstance(short tlvOffset, short fromPtr) {
         short tmp = tlvOffset;
         short ptr = mLLBuffer[2 + ROOT_OFFSET];
@@ -126,6 +127,11 @@ public class BerArrayLinkList {
         }
 
         return ptr;
+    }
+    */
+
+    public short getFirstTLVInstance() {
+        return mLLBuffer[2 + ROOT_OFFSET];
     }
 
     public short getNextTag(short fromPtr) {
