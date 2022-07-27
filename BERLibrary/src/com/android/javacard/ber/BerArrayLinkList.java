@@ -34,6 +34,7 @@ import javacard.framework.JCSystem;
 public class BerArrayLinkList {
 
     private short[] mSizeInfo;
+    private short[] mCurrentSize;
     private short[] mLLBuffer;
     private final short DEFAULT_SIZE = 20;
     private final short START_OFFSET = 2;
@@ -53,30 +54,33 @@ public class BerArrayLinkList {
     }
 
     private void allocateBERLinkList(short size) {
-        // mSizeInfo is a 3 short sized array with following information
         // 0 - size
-        // 1 - max Size
-        // 2 - offset
-        mSizeInfo = (short []) JCSystem.makeTransientShortArray((short) 3, JCSystem.CLEAR_ON_RESET);
-        this.mSizeInfo[0] = 0;
-        this.mSizeInfo[1] = size;
-        this.mSizeInfo[2] = START_OFFSET;
+        // current size of BER array
+        mCurrentSize = JCSystem.makeTransientShortArray((short) 1, JCSystem.CLEAR_ON_RESET);
+        mCurrentSize[0] = 0;
 
-        mLLBuffer = (short []) JCSystem.makeTransientShortArray((short) (size * BLOCK_SIZE), JCSystem.CLEAR_ON_RESET);
+        // 0 - max Size
+        // 1 - Start offset of the array
+        mSizeInfo = new short[2];
+        mSizeInfo[0] = size;
+        mSizeInfo[1] = START_OFFSET;
+
+        mLLBuffer = JCSystem.makeTransientShortArray((short) (size * BLOCK_SIZE), 
+                JCSystem.CLEAR_ON_RESET);
         mLLBuffer[0] = mLLBuffer[1] = -1; // Root&Tail to -1/null
     }
 
     public short allocateBerTlv(boolean newList) {
         short returnPtr = -1;
-        if (this.mSizeInfo[0] >= mSizeInfo[1]) return returnPtr;
+        if (this.mCurrentSize[0] >= mSizeInfo[0]) return returnPtr;
 
         if (newList) {
-            returnPtr = (short) (START_OFFSET + mSizeInfo[2]);
-            mSizeInfo[2] += (BLOCK_SIZE + START_OFFSET);
+            returnPtr = (short) (START_OFFSET + mSizeInfo[1]);
+            mSizeInfo[1] += (BLOCK_SIZE + START_OFFSET);
             mLLBuffer[(short)(returnPtr + ROOT_OFFSET)] = mLLBuffer[((short)(returnPtr + TAIL_OFFSET))] = -1;
         } else {
-            returnPtr = mSizeInfo[2];
-            mSizeInfo[2] += BLOCK_SIZE;
+            returnPtr = mSizeInfo[1];
+            mSizeInfo[1] += BLOCK_SIZE;
         }
 
         return returnPtr;
@@ -93,8 +97,8 @@ public class BerArrayLinkList {
     }
 
     public void resetLinkList() {
-        this.mSizeInfo[0] = 0;
-        this.mSizeInfo[2] = START_OFFSET;
+        mCurrentSize[0] = 0;
+        mSizeInfo[1] = START_OFFSET;
         mLLBuffer[0] = -1; mLLBuffer[1] = -1;
     }
 
@@ -102,7 +106,8 @@ public class BerArrayLinkList {
         /* TODO: Corner condition check */
 
         if (mLLBuffer[(short) (firstElementOffset + ROOT_OFFSET)] == -1) {
-            mLLBuffer[(short)(firstElementOffset + ROOT_OFFSET)] = mLLBuffer[(short)(firstElementOffset + TAIL_OFFSET)] = berTlvPtr;
+            mLLBuffer[(short)(firstElementOffset + ROOT_OFFSET)] = 
+                    mLLBuffer[(short)(firstElementOffset + TAIL_OFFSET)] = berTlvPtr;
         } else {
             short tailOffset = mLLBuffer[(short)(firstElementOffset + TAIL_OFFSET)];
 
@@ -111,7 +116,7 @@ public class BerArrayLinkList {
         }
 
         mLLBuffer[(short)(berTlvPtr + 5)] = -1; // NULL
-        mSizeInfo[0]++;
+        mCurrentSize[0]++;
     }
 
     /*
@@ -170,7 +175,8 @@ public class BerArrayLinkList {
             lengthByteCount = 3;
         }
 
-        return (short) (mLLBuffer[(short)(tlvPtr + 1)] +  mLLBuffer[(short)(tlvPtr + 3)] + lengthByteCount);
+        return (short) (mLLBuffer[(short)(tlvPtr + 1)] +  mLLBuffer[(short)(tlvPtr + 3)] +
+                lengthByteCount);
     }
 
 }
