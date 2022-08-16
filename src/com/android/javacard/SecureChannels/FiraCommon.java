@@ -91,7 +91,6 @@ public class FiraCommon {
     public void deriveKeys(byte[] encKey, short encKeyOffset, byte[] macKey, short macKeyOffset,
             byte[] context, short contextOffset, short contextlength, byte[] output,
             short outputOffset) {
-
         if (mScp3Lib.scp03KDF(encKey, encKeyOffset, context, contextOffset,
                 contextlength, DERIVATION_SENC, false, output, outputOffset)
                 != SIGNATURE_BLOCK_SIZE ||
@@ -107,7 +106,6 @@ public class FiraCommon {
     }
 
     public void setSecurityLevel(byte level) {
-
         // Table 43 - Security Level
         if (level == CDECMAC_RENCMAC || level == CDECMAC_RMAC || level == CMAC_RMAC ||
                 level == CDECMAC || level == CMAC) {

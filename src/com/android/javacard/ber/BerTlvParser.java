@@ -1,3 +1,18 @@
+/*
+ * Copyright(C) 2022 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.android.javacard.ber;
 
 import javacard.framework.ISO7816;
@@ -26,12 +41,10 @@ public class BerTlvParser {
         short tOffset = offset;
         short startLLOffset = 2;
 
-        /* TODO: need Memory management for Allocating memory at run time
-         * tlvsLL.AllocateLinkList();
-         */
         // Keeping maximum tags count 100.
         for (short i = 0; i < 100 ; i++) {
-            berTlvPtr = getTlvFrom(buffer, offset, tOffset, (short) (length - tOffset - offset), false);
+            berTlvPtr = getTlvFrom(buffer, offset, tOffset, (short) (length - tOffset - offset),
+                    false);
 
             if(berTlvPtr == -1) break;
             mTlvsLL.addToBottom(berTlvPtr, startLLOffset);
@@ -50,7 +63,8 @@ public class BerTlvParser {
     	return mTlvsLL;
     }
 
-    private short getTlvFrom(byte[] buffer, short offset, short tOffset, short len, boolean cObject) {
+    private short getTlvFrom(byte[] buffer, short offset, short tOffset, short len,
+            boolean cObject) {
 
         if (((short)(tOffset + len) > buffer.length) || buffer[tOffset] == 0)  {
             return -1;
@@ -73,19 +87,21 @@ public class BerTlvParser {
         // value calculation
         // if Bit 5 is set it's a "constructed data object"
         if ((buffer[tOffset] & 0x20) == 0x20) {
-            short newPtrSublistOffset = addSubListBerTlv(buffer, offset, valueOffset, berLength, tlvPtrOffset);
-            mTlvsLL.createBerTlv((short) (tagOffset - offset), tagBytesCount, (short) (valueOffset - offset),
-                    berLength, tlvPtrOffset, newPtrSublistOffset);
+            short newPtrSublistOffset = addSubListBerTlv(buffer, offset, valueOffset, berLength,
+                    tlvPtrOffset);
+            mTlvsLL.createBerTlv((short) (tagOffset - offset), tagBytesCount,
+                    (short) (valueOffset - offset), berLength, tlvPtrOffset, newPtrSublistOffset);
             mGlobalOffset[0] = finalOffset;
         } else {
-            mTlvsLL.createBerTlv((short) (tagOffset - offset), tagBytesCount, (short) (valueOffset - offset),
-                    berLength, tlvPtrOffset, (short) -1);
+            mTlvsLL.createBerTlv((short) (tagOffset - offset), tagBytesCount,
+                    (short) (valueOffset - offset), berLength, tlvPtrOffset, (short) -1);
         }
 
         return tlvPtrOffset;
     }
 
-    private short addSubListBerTlv(byte[] buffer, short offset, short vOffset, short valueLength, short tlvParentOffset) {
+    private short addSubListBerTlv(byte[] buffer, short offset, short vOffset, short valueLength,
+            short tlvParentOffset) {
 
         short startPosition = vOffset;
         short len = valueLength;

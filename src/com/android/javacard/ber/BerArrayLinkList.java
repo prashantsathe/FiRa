@@ -118,8 +118,6 @@ public class BerArrayLinkList {
     }
 
     public void addToBottom(short berTlvPtr, short firstElementOffset) {
-        /* TODO: Corner condition check */
-
         if (mLLBuffer[(short) (firstElementOffset + ROOT_OFFSET)] == -1) {
             mLLBuffer[(short)(firstElementOffset + ROOT_OFFSET)] = 
                     mLLBuffer[(short)(firstElementOffset + TAIL_OFFSET)] = berTlvPtr;

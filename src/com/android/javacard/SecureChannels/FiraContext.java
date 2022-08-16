@@ -88,7 +88,7 @@ public class FiraContext {
         setRole(FiraConstant.RESPONDER);
         setState(FiraConstant.UNSECURE);
 
-        // default key / dummy data / TODO: remove it
+        /* // default key / dummy data for SC2 testing
         {
         Util.arrayFillNonAtomic(mBuf, O_DEVICE_IDENTIFIER, DEVICE_IDENTIFIER_SIZE, (byte) 0x02);
         Util.arrayFillNonAtomic(mBuf, O_EC_KEY_PRIV1, EC_SK_KEY_LENGTH, C_04);
@@ -118,6 +118,7 @@ public class FiraContext {
         mBuf[index++] = 0x79; mBuf[index++] = 0x59; mBuf[index++] = 0x42; mBuf[index++] = (byte) 0xC0;
         mBuf[index++] = (byte) 0xEB; mBuf[index++] = 0x22; mBuf[index++] = (byte) 0xAA; mBuf[index++] = 0x32;
         }
+        */
     }
 
     public boolean isFree() {

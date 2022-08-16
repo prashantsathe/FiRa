@@ -929,7 +929,6 @@ public class FiraResponder {
 
         } else if (p1 == C_00) {
             // TODO: Check whether Authentication method is supported by Application
-
             // Asymmetric authentication
             if (dataBuff[(short) (cDataBuffOffset + 3)] != T_81) {
                 ISOException.throwIt(ISO7816.SW_DATA_INVALID);
@@ -968,7 +967,7 @@ public class FiraResponder {
         return responseSelectADFSC2(dataBuff, dataOffset, cDataBuffLength, p1, p2, oidMatch);
     }
 
-    // Public functions
+    // ------------------------ Public functions ------------------------
     public short parseSelectAdf(byte[] dataBuff, short dataOffset, short dataLength,
             short cDataOffset) {
 

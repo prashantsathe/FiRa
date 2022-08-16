@@ -37,7 +37,6 @@ public class SusRdsSlot {
     private static byte[] mRdsInfoInPersistent;
 
     public SusRdsSlot() {
-
         mBerTlvParser = new Object[MAX_RDS_COUNT];
 
         for (short i = 0; i < MAX_RDS_COUNT; i++)

@@ -50,7 +50,6 @@ public class SusApplet extends Applet
     }
 
     private SusApplet() {
-
         // if persistent storage is configured
         if (STORE_RDS_PERSISTENT_FLAG) {
             mResetFlag = JCSystem.makeTransientByteArray((short) 1, JCSystem.CLEAR_ON_RESET);
@@ -93,7 +92,6 @@ public class SusApplet extends Applet
      * @return - response length(short) of get RDS data.
      */
     private short processGetRdsData(byte[] buffer) {
-
         // Check UWB length
         if (buffer[ISO7816.OFFSET_LC] != 4)
             ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
@@ -108,7 +106,6 @@ public class SusApplet extends Applet
      * @param buffer - input APDU buffer
      */
     private void processEraseRds(byte[] buffer) {
-
         // Check UWB length
         if (buffer[ISO7816.OFFSET_LC] != 4)
             ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
@@ -272,7 +269,6 @@ public class SusApplet extends Applet
      */
     public short createRangingDataSet(byte[] inBuffer, short inOffset, short inLength,
             byte[] outBuffer, short outOffset) {
-
         // Check RDS Length
         if (inLength > RDS_MAX_DATA_SIZE)
             ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
@@ -315,7 +311,6 @@ public class SusApplet extends Applet
      */
     public short deleteRangingDataSet(byte[] inBuffer, short inOffset, short inLength,
             byte[] outBuffer, short outOffset) {
-
         mSusRDSstorage.deleteRangingDataSet(inBuffer, inOffset, inLength, mTempBuffer);
         return 0;
     }
@@ -350,7 +345,6 @@ public class SusApplet extends Applet
     public void onRestore(Element ele) {
 
         if (ele != null) {
-
             ele.initRead();
             short oldVersion = ele.readShort();
 

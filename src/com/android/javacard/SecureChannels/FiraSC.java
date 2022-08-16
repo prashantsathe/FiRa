@@ -432,7 +432,7 @@ public class FiraSC extends FiraSecureChannel {
         return false;
     }
 
-    ///////////////////////////////Public Functions//////////////////////////////////
+    //-----------------------------Public Functions-----------------------------
     /**
      * Handle incoming protocol object which process following commands "SELECT", "SELECT_ADF" and
      * "GENERAL_AUTHENTICATE" when device act as a responder or which process initiator side 
