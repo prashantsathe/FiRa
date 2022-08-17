@@ -31,8 +31,7 @@ import javacard.security.RandomData;
 import javacardx.apdu.ExtendedLength;
 import javacardx.crypto.Cipher;
 
-/* Note: In case we want to check orderliness of incoming data enable(comment) 'FiraInputValidation'
- *       and disable(uncomment) FiraNoInputValidation
+/* Note: To enable input validation use FiraInputValidation instead of FiraNoInputValidation'
  */
 import static com.android.javacard.FiraApplet.FiraNoInputValidation.*;
 //import static com.android.javacard.FiraApplet.FiraInputValidation.*;

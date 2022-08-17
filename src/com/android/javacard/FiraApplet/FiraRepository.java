@@ -169,6 +169,72 @@ public class FiraRepository {
         Util.setShort(mem, (short) (dataSegment - HEADER_LEN), len);
     }
 
+    // function return values are same as 'getNextTag'
+    // retValues[0] - start index of TLV object 
+    // retValues[1] - tag id
+    // retValues[2] - total tag length 
+    // retValues[3] = start index of TLV value field.
+    private static boolean isMoreThanOneTag(byte[] buf, short offset, short len) {
+        // first read DO
+        FiraUtil.getNextTag(buf, offset, len, true, retValues);
+
+        short doLen = retValues[2]; // DO len
+        // read the child tag
+        if (doLen > 0) {
+            short totalTagLen = (short) (FiraUtil.getNextTag(buf, retValues[3], retValues[2], true,
+                    retValues) - retValues[0]);
+            if (totalTagLen < doLen) {
+                return true;
+            }
+            retValues[2] = totalTagLen;
+        }
+        return false;
+    }
+
+    private static short getNewDO(byte[] mem, short tagStart, short tagLen, byte[] buf,
+            short offset, short len, short tagId) {
+        // make sure buf is greater than or equal to maxLen, as new DO will be get copied at
+        // the end of the buf
+        short bufIndex = (short) buf.length;
+        if (bufIndex < FiraSpecs.IMPL_ADF_EPHEMERAL_DATA_MAX_SIZE_PER_SLOT)
+            ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
+
+        // get DO
+        FiraUtil.getNextTag(mem, tagStart, tagLen, true, retValues);
+        short doTagId = retValues[1]; // DO tag id
+        short totalTagLen = 0, nextIndex = 0;
+        short mIndex = retValues[3];  // DO Value Index
+        short mLen = retValues[2];    // DO Tag Length
+        boolean match = false;
+
+        while (mLen > 0) {
+            nextIndex = FiraUtil.getNextTag(mem, mIndex, mLen, true, retValues);
+            totalTagLen = (short) (nextIndex - retValues[0]);
+            mIndex = nextIndex;
+
+            if (tagId == retValues[1]) {
+                bufIndex = FiraUtil.pushBytes(buf, bufIndex, buf, offset, len);
+                match = true;
+            } else {
+                bufIndex = FiraUtil.pushBytes(buf, bufIndex, mem, retValues[0], totalTagLen);
+            }
+            mLen -= totalTagLen;
+        }
+
+        // add tag if not 'replace'
+        if (!match) {
+            bufIndex = FiraUtil.pushBytes(buf, bufIndex, buf, offset, len);
+        }
+        // finally add DO
+        bufIndex = FiraUtil.pushBERLength(buf, bufIndex, (short) (buf.length - bufIndex));
+        bufIndex = FiraUtil.pushBERTag(buf, bufIndex, doTagId);
+        retValues[0] = (short) (buf.length - bufIndex); // return total length
+        return bufIndex;
+    }
+
+    /* Note: If DO has more than one tag then entire DO get replaced with the desired buffer (buf)
+     *       else desired tag will be get added or replaced based on tag presence in Slot data. 
+     */
     public static void putData(short dataObjectTag, byte[] buf, short offset, short len,
             byte slotId) {
         // Read slot data
@@ -194,9 +260,17 @@ public class FiraRepository {
         if (usedLen > 0) {
             tagEnd = FiraUtil.getTag(dataObjectTag, mem, cursor, usedLen, false, retValues);
         }
+
         if (tagEnd != FiraSpecs.INVALID_VALUE) {
             tagStart = retValues[0];
             tagLen = (short) (tagEnd - tagStart);
+
+            // Check if DO has more than one tag
+            if (!isMoreThanOneTag(buf, offset, len)) {
+                // now 'retValues' contains first tag information present in the 'buf'
+                offset = getNewDO(mem, tagStart, tagLen, buf, retValues[0], retValues[2], retValues[1]);
+                len = retValues[0];
+            }
         }
         JCSystem.beginTransaction();
         perform(PUT, mem, cursor, usedLen, maxLen, tagStart, tagLen, buf, offset, len);
@@ -229,7 +303,7 @@ public class FiraRepository {
                         (short) (tagEnd - memEnd));
                 memLen = (short) (memLen - tagLen);
                 // paste the new data
-                Util.arrayCopyNonAtomic(mem, tagStart, valBuf, valStart, valLen);
+                Util.arrayCopyNonAtomic(valBuf, valStart, mem, tagStart, valLen);
                 memLen = (short) (memLen + valLen);
             } else {
                 ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
