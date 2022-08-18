@@ -745,7 +745,7 @@ public class FiraSC extends FiraSecureChannel {
 
         short ret = generateRDSbuffer(output, outputOffset, outputLength, sInData, UWB_DATA_OFFSET,
                 uwbSessionKeyLength, sInData, (short) (uwbSessionKeyLength + UWB_DATA_OFFSET),
-                uwbSessionSessionId != null);
+                uwbSessionSessionId == null);
         // Signal RDS generated Event
         mFiraClientContext.signal(FiraClientContext.EVENT_RDS);
         return ret;
