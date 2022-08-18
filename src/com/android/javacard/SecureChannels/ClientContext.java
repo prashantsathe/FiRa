@@ -126,39 +126,58 @@ public class ClientContext {
         return ctx.getCAPublicKey(kvn,keyBuff,keyBuffOffset);
     }
 
-    public static short getSkSdEcka(byte kvn, byte[] keyBuff, short keyBuffOffset, FiraClientContext ctx) {
-        short ret = ctx.getSDSecretKey(keyBuff,keyBuffOffset);
-        if (ret == FiraClientContext.INVALID_VALUE) {
-            return 0;
-        }
-        return ret;
+    public static short getSkSdEcka(byte kvn, byte[] keyBuff, short keyBuffOffset,
+            FiraClientContext ctx) {
+        return ctx.getSDSecretKey(keyBuff, keyBuffOffset);
     }
 
-    public static short getPkSdEcka(byte kvn, byte[] keyBuff, short keyBuffOffset) {
-        short index = keyBuffOffset;
+    public static short getPkSdEcka(byte kvn, byte[] keyBuff, short keyBuffOffset,
+            FiraClientContext ctx) {
+        short size = ctx.getSDCertificate(keyBuff, keyBuffOffset);
 
-        // TODO: remove it; used it for testing purpose
-        // 04 73103EC3 0B3CCF57 DAAE08E9 3534AEF1 44A35940 CF6BBBA1 2A0CF7CB D5D65A64
-        // D82C8C99 E9D3C45F 9245BA9B 27982C9A EA8EC1DB 94B19C44 795942C0 EB22AA32
-        keyBuff[index++] = 0x04; keyBuff[index++] = 0x73; keyBuff[index++] = 0x10; keyBuff[index++] = 0x3e;
-        keyBuff[index++] = (byte)0xc3; keyBuff[index++] = 0x0b; keyBuff[index++] = 0x3c; keyBuff[index++] = (byte)0xcf;
-        keyBuff[index++] = 0x57; keyBuff[index++] = (byte)0xda; keyBuff[index++] = (byte)0xae; keyBuff[index++] = 0x08;
-        keyBuff[index++] = (byte)0xe9; keyBuff[index++] = 0x35; keyBuff[index++] = 0x34; keyBuff[index++] = (byte)0xae;
-        keyBuff[index++] = (byte)0xf1; keyBuff[index++] = 0x44; keyBuff[index++] = (byte)0xa3; keyBuff[index++] = 0x59;
-        keyBuff[index++] = 0x40; keyBuff[index++] = (byte)0xcf; keyBuff[index++] = 0x6b; keyBuff[index++] = (byte)0xbb;
-        keyBuff[index++] = (byte)0xa1; keyBuff[index++] = 0x2a; keyBuff[index++] = 0x0c; keyBuff[index++] = (byte)0xf7;
-        keyBuff[index++] = (byte)0xcb; keyBuff[index++] = (byte)0xd5; keyBuff[index++] = (byte)0xd6; keyBuff[index++] = 0x5a;
-        keyBuff[index++] = 0x64; keyBuff[index++] = (byte)0xd8; keyBuff[index++] = 0x2c; keyBuff[35] = (byte)0x8c;
-        keyBuff[index++] = (byte)0x99; keyBuff[index++] = (byte)0xe9; keyBuff[index++] = (byte)0xd3; keyBuff[index++] = (byte)0xc4;
-        keyBuff[index++] = 0x5f; keyBuff[index++] = (byte)0x92; keyBuff[index++] = 0x45; keyBuff[index++] = (byte)0xba;
-        keyBuff[index++] = (byte)0x9b; keyBuff[index++] = 0x27; keyBuff[index++] = (byte)0x98; keyBuff[index++] = 0x2c;
-        keyBuff[index++] = (byte)0x9a; keyBuff[index++] = (byte)0xea; keyBuff[index++] = (byte)0x8e; keyBuff[index++] = (byte)0xc1;
-        keyBuff[index++] = (byte)0xdb; keyBuff[index++] = (byte)0x94; keyBuff[index++] = (byte)0xb1; keyBuff[index++] = (byte)0x9c;
-        keyBuff[index++] = 0x44; keyBuff[index++] = 0x79; keyBuff[index++] = 0x59; keyBuff[index++] = 0x42;
-        keyBuff[index++] = (byte)0xc0; keyBuff[index++] = (byte)0xeb; keyBuff[index++] = 0x22; keyBuff[index++] = (byte)0xaa;
-        keyBuff[index++] = 0x32;
+        if (size != (short) 0) {
+            // extract public key
+            // NOTE: we always validate the certificate before provisioning
+            //       So public key and certificate header must be present
+            //       we may have multiple SD certificates, we have implemented PK extraction from
+            //       first certificate. (SD Cert selection based on ??)
+            //       'keyBuff' contains TAG_CERTIFICATE header
+            short index = 2; // for 'TAG_CERTIFICATE'
+            short cerLenByteCnt = BerTlvParser.getTotalLengthBytesCount(keyBuff,
+                    (short) (keyBuffOffset + index));
+            short cerLen = BerTlvParser.getDataLength(keyBuff, (short) (keyBuffOffset + index));
+            index += cerLenByteCnt;
 
-        return (short) (index - keyBuffOffset);
+            // travel till 'TAG_PUBLIC_KEY'
+            short tagByteCnt = 0, tag = 0, lenByteCnt = 0, dataLen = 0;
+            while (index < cerLen) {
+                tagByteCnt = BerTlvParser.getTotalTagBytesCount(keyBuff,
+                        (short) (keyBuffOffset + index));
+
+                tag = tagByteCnt == 1 ?
+                        (short) (keyBuff[(short) (keyBuffOffset + index)] & (short) 0xFF) :
+                            Util.getShort(keyBuff, (short) (keyBuffOffset + index));
+
+                index += tagByteCnt;
+                lenByteCnt = BerTlvParser.getTotalLengthBytesCount(keyBuff,
+                        (short) (keyBuffOffset + index));
+                dataLen = BerTlvParser.getDataLength(keyBuff, (short) (keyBuffOffset + index));
+                index += lenByteCnt;
+
+                if (tag == ScpConstant.TAG_PUBLIC_KEY) {
+                    break;
+                }
+                // new index offset 
+                index += dataLen;
+            }
+
+            // now index should be pointing to TAG_PUBLIC_KEY_Q
+            // refer Table 51 – Certificate for reader and device
+            Util.arrayCopyNonAtomic(keyBuff, (short) (keyBuffOffset + index + 2), keyBuff,
+                    keyBuffOffset, keyBuff[(short) (keyBuffOffset + index + 1)]);
+            size = keyBuff[(short) (keyBuffOffset + index + 1)];
+        }
+        return size;
     }
 
     public static boolean verifyCSN(byte[] csnBuff, short csnBuffOffset, short csnBuffLength) {

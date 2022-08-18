@@ -388,15 +388,16 @@ public class FiraAppletContext extends FiraClientContext {
     }
 
     public short getSDCertificate(byte[] buf, short index) {
-        byte[] mem = FiraRepository.getAppletData(FiraSpecs.TAG_CERT, retValues);
-        short end = FiraUtil.getTag(FiraSpecs.TAG_CERT, mem, retValues[1], retValues[2], true,
-                retValues);
-        short len = (short) (end - retValues[0]);
+        byte[] mem = FiraRepository.getAppletData(FiraSpecs.TAG_APPLET_CERT_STORE, retValues);
+        short end = FiraUtil.getTag(FiraSpecs.TAG_APPLET_CERT_STORE, mem, retValues[1],
+                retValues[2], true, retValues);
 
+        // This must never happen if the provisioning is done properly.
         if (end == FiraSpecs.INVALID_VALUE) {
-            Util.arrayCopyNonAtomic(mem, retValues[0], buf, index, len);
+            return 0;
         }
-        return len;
+        Util.arrayCopyNonAtomic(mem, retValues[3], buf, index, retValues[2]);
+        return retValues[2];
     }
 
     public short getSDSecretKey(byte[] buf, short index) {
@@ -406,7 +407,7 @@ public class FiraAppletContext extends FiraClientContext {
 
         // This must never happen if the provisioning is done properly.
         if (end == FiraSpecs.INVALID_VALUE) {
-            return FiraClientContext.INVALID_VALUE;
+            return 0;
         }
         Util.arrayCopyNonAtomic(mem, retValues[3], buf, index, retValues[2]);
         return retValues[2];

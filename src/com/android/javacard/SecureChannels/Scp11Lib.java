@@ -51,7 +51,7 @@ public class Scp11Lib {
         msecurityLevel = JCSystem.makeTransientByteArray((short) 1, JCSystem.CLEAR_ON_RESET);
         mEPkOceEcka = JCSystem.makeTransientByteArray(EPHEMERAL_PK_SIZE, JCSystem.CLEAR_ON_RESET);
         mEPkOceEckaSize = JCSystem.makeTransientShortArray((short) 1, JCSystem.CLEAR_ON_RESET);
-        mKeySetBuff = JCSystem.makeTransientByteArray((short) 128, JCSystem.CLEAR_ON_RESET);
+        mKeySetBuff = JCSystem.makeTransientByteArray((short) 512, JCSystem.CLEAR_ON_RESET);
         InitStaticFields();
         mFiraClientContext = firaClientContext;
     }
@@ -146,7 +146,8 @@ public class Scp11Lib {
         short byteCnt = 0;
 
         // get pkSdEcka/skSdEcka
-        short pkSdEckaSize = ClientContext.getPkSdEcka(kVn, mKeySetBuff, (short) 0);
+        short pkSdEckaSize = ClientContext.getPkSdEcka(kVn, mKeySetBuff, (short) 0,
+                mFiraClientContext);
 
         if (pkSdEckaSize == (short) 0) {
             ISOException.throwIt(ISO7816.SW_DATA_INVALID);
