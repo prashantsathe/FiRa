@@ -164,7 +164,7 @@ public class FiraSC extends FiraSecureChannel {
 
                     // IV calculation
                     short outLen = sCrypto.genAes128CbcNopadOutput(Cipher.MODE_ENCRYPT, sInData,
-                            macKeyOffset, Scp3Lib.mNullBytes16, (short) 0, SIGNATURE_BLOCK_SIZE,
+                            macKeyOffset, Scp3Lib.sNullBytes16, (short) 0, SIGNATURE_BLOCK_SIZE,
                             mContext.mBuf, O_RANDOM_ICC, BlOCK_16BYTES, sOutData, (short) 0);
 
                     short inLen = sCrypto.genAes128CbcNopadOutput(Cipher.MODE_DECRYPT, sInData,
@@ -282,7 +282,7 @@ public class FiraSC extends FiraSecureChannel {
                 index += BerTlvParser.getTotalLengthBytesCount(buffer, index);
 
                 short msg2EncLen = sCrypto.genAes128CbcNopadOutput(Cipher.MODE_DECRYPT,
-                        mContext.mBuf, O_KSES_AUTHENC, Scp3Lib.mNullBytes16, (short) 0,
+                        mContext.mBuf, O_KSES_AUTHENC, Scp3Lib.sNullBytes16, (short) 0,
                         BlOCK_16BYTES, buffer, index, len82, sInData, (short) 0);
 
                 msg2EncLen = Crypto.unpadM2(sInData, (short) 0, msg2EncLen);
@@ -348,7 +348,7 @@ public class FiraSC extends FiraSecureChannel {
              // 0xC1 16or32 Responder-specific Sub-session key
              if (multiCast) {
                  // 9.2.2.9.5 UWB Responder Specific Sub-session Key Derivation
-                 // (TBD / refer to section 8) TODO: change the value buffer after integration
+                 // (TBD / refer to section 8) change the value buffer after integration
                  offset = BerTlvBuilder.addTlv(output, offset, outputLength,
                          (byte) 0xC1, uwbSessionID, uwbSessionIDoffset,
                          (short) 4);

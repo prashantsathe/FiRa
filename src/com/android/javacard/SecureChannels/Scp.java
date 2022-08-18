@@ -24,9 +24,9 @@ import javacard.framework.JCSystem;
 
 public class Scp extends FiraSecureChannel {
 
-    private static byte[] mActiveChannel;
-    private static byte[] mScpState;
-    private static Crypto mCrypto;
+    private static byte[] sActiveChannel;
+    private static byte[] sScpState;
+    private static Crypto sCrypto;
 
     private Scp11Lib mScp11Lib;
     private Scp3Lib mScp3Lib;
@@ -35,16 +35,16 @@ public class Scp extends FiraSecureChannel {
     public Scp(FiraClientContext firaClientContext) {
         mFiraClientContext = firaClientContext;
         InitStaticFields();
-        mScp3Lib = new Scp3Lib(mCrypto);
-        mScp11Lib = new Scp11Lib(mCrypto, mScp3Lib, firaClientContext);
+        mScp3Lib = new Scp3Lib(sCrypto);
+        mScp11Lib = new Scp11Lib(sCrypto, mScp3Lib, firaClientContext);
     }
 
     private void InitStaticFields() {
         // Check just one field for NULL
-        if (mActiveChannel == null) {
-            mActiveChannel = JCSystem.makeTransientByteArray((short) 1, JCSystem.CLEAR_ON_RESET);
-            mScpState = JCSystem.makeTransientByteArray((short) 1, JCSystem.CLEAR_ON_RESET);
-            mCrypto = new Crypto();
+        if (sActiveChannel == null) {
+            sActiveChannel = JCSystem.makeTransientByteArray((short) 1, JCSystem.CLEAR_ON_RESET);
+            sScpState = JCSystem.makeTransientByteArray((short) 1, JCSystem.CLEAR_ON_RESET);
+            sCrypto = new Crypto();
         }
     }
 
@@ -75,9 +75,9 @@ public class Scp extends FiraSecureChannel {
         short cDataOffset = (short) (apduBuff[(short) (apduBuffOffset + ISO7816.OFFSET_LC)] == 0 ? 7 : 5);
         short dataLen = 0;
 
-        if (mActiveChannel[0] != FREE) {
+        if (sActiveChannel[0] != FREE) {
             // Only one active session for scp11C per SD
-            if (mActiveChannel[0] != (byte) (APDU.getCLAChannel() + 1)) 
+            if (sActiveChannel[0] != (byte) (APDU.getCLAChannel() + 1)) 
                 ISOException.throwIt(ANOTHER_SCP11C_SESSION_IS_ACTIVE);
         }
 
@@ -101,12 +101,12 @@ public class Scp extends FiraSecureChannel {
                         (short) (apduBuffLen - cDataOffset), p2, p1)) {
                     ISOException.throwIt(INCORRECT_VAL_IN_CMD);
                 }
-                mScpState[0] = PSO_STATE;
+                sScpState[0] = PSO_STATE;
                 break;
 
             case MUTUAL_AUTHENTICATE:
                 // Check if PSO is completed or not
-                if (mScpState[0] != PSO_STATE)
+                if (sScpState[0] != PSO_STATE)
                     ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
 
                 if (apduBuff[ISO7816.OFFSET_P2] == 0)
@@ -116,8 +116,8 @@ public class Scp extends FiraSecureChannel {
                         (short) (apduBuffLen - cDataOffset), (byte) (p2 & 0x7F),
                         (byte) (p1 & 0x7F), apduBuff, cDataOffset);
 
-                mActiveChannel[0] = (byte) (APDU.getCLAChannel() + 1);
-                mScpState[0] = START_DONE_STATE;
+                sActiveChannel[0] = (byte) (APDU.getCLAChannel() + 1);
+                sScpState[0] = START_DONE_STATE;
                 mFiraClientContext.signal(FiraClientContext.EVENT_SECURE);
                 // TODO: The receipt key shall be deleted after sending the receipt.
                 break;
@@ -192,7 +192,7 @@ public class Scp extends FiraSecureChannel {
      */
     public void terminate() {
         // resetting the active channel is enough
-        mActiveChannel[0] = FREE;
+        sActiveChannel[0] = FREE;
         mScp11Lib.reset();
     }
 

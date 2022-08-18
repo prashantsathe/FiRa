@@ -60,29 +60,29 @@ public class FiraAppletContext extends FiraClientContext {
     private static final byte APPLET_REF = 7;
     private static final byte ATTRIBUTES_COUNT = 8;
     // Context table - one per logical channel
-    private static Object[] contexts;
-    private static short[] retValues;
+    private static Object[] sContexts;
+    private static short[] sRetValues;
 
     // instance attributes
-    private final byte[] attributes;
-    private final Object[] dataCache;
-    private final Object[] secureChannel;
+    private final byte[] mAttributes;
+    private final Object[] mDataCache;
+    private final Object[] mSecureChannel;
 
     private FiraAppletContext() {
-        attributes = JCSystem.makeTransientByteArray(ATTRIBUTES_COUNT, JCSystem.CLEAR_ON_RESET);
-        dataCache = JCSystem.makeTransientObjectArray((short) 1, JCSystem.CLEAR_ON_RESET);
-        secureChannel = JCSystem.makeTransientObjectArray((short) 1, JCSystem.CLEAR_ON_RESET);
-        retValues = JCSystem.makeTransientShortArray((short) 5, JCSystem.CLEAR_ON_RESET);
+        mAttributes = JCSystem.makeTransientByteArray(ATTRIBUTES_COUNT, JCSystem.CLEAR_ON_RESET);
+        mDataCache = JCSystem.makeTransientObjectArray((short) 1, JCSystem.CLEAR_ON_RESET);
+        mSecureChannel = JCSystem.makeTransientObjectArray((short) 1, JCSystem.CLEAR_ON_RESET);
+        sRetValues = JCSystem.makeTransientShortArray((short) 5, JCSystem.CLEAR_ON_RESET);
         reset();
     }
 
     public static void init() {
         byte channels = IMPL_MAX_LOGICAL_CHANNELS;
-        contexts = new Object[channels];
+        sContexts = new Object[channels];
 
         while (channels > 0) {
             channels--;
-            contexts[channels] = new FiraAppletContext();
+            sContexts[channels] = new FiraAppletContext();
         }
     }
 
@@ -91,46 +91,46 @@ public class FiraAppletContext extends FiraClientContext {
     }
 
     public static FiraAppletContext getContext(short channel) {
-        return (FiraAppletContext) contexts[channel];
+        return (FiraAppletContext) sContexts[channel];
     }
 
     public Object getSecureChannel() {
-        return secureChannel[0];
+        return mSecureChannel[0];
     }
 
     public void setSecureChannel(Object channel) {
-        secureChannel[0] = channel;
+        mSecureChannel[0] = channel;
     }
 
     public void reset() {
-        attributes[SLOT] = FiraSpecs.INVALID_VALUE;
-        attributes[LOCAL_CHANNEL_STATE] = LOCAL_UNSECURE;
-        attributes[REMOTE_CHANNEL_STATE] = REMOTE_UNSECURE;
-        attributes[OPERATION_STATE] = OP_IDLE;
-        attributes[EXTENDED_OPTIONS_BYTE_1] = 0;
-        attributes[EXTENDED_OPTIONS_BYTE_2] = 0;
-        attributes[EVENT] = FiraClientContext.EVENT_INVALID;
-        attributes[APPLET_REF] = FiraSpecs.INVALID_VALUE;
+        mAttributes[SLOT] = FiraSpecs.INVALID_VALUE;
+        mAttributes[LOCAL_CHANNEL_STATE] = LOCAL_UNSECURE;
+        mAttributes[REMOTE_CHANNEL_STATE] = REMOTE_UNSECURE;
+        mAttributes[OPERATION_STATE] = OP_IDLE;
+        mAttributes[EXTENDED_OPTIONS_BYTE_1] = 0;
+        mAttributes[EXTENDED_OPTIONS_BYTE_2] = 0;
+        mAttributes[EVENT] = FiraClientContext.EVENT_INVALID;
+        mAttributes[APPLET_REF] = FiraSpecs.INVALID_VALUE;
     }
 
     public byte getAppletRef() {
-        return attributes[APPLET_REF];
+        return mAttributes[APPLET_REF];
     }
 
     public short setAppletRef(byte appletRef) {
-        return attributes[APPLET_REF] = appletRef;
+        return mAttributes[APPLET_REF] = appletRef;
     }
 
     public short getSlot() {
-        if (attributes[SLOT] < 0) {
+        if (mAttributes[SLOT] < 0) {
             return FiraSpecs.INVALID_VALUE;
         } else {
-            return attributes[SLOT];
+            return mAttributes[SLOT];
         }
     }
 
     public void setSlot(byte slot) {
-        attributes[SLOT] = slot;
+        mAttributes[SLOT] = slot;
         FiraRepository.selectAdf(slot);
     }
 
@@ -139,95 +139,95 @@ public class FiraAppletContext extends FiraClientContext {
     }
 
     public void setRoot() {
-        attributes[SLOT] = FiraRepository.ROOT_SLOT;
+        mAttributes[SLOT] = FiraRepository.ROOT_SLOT;
     }
 
     public void clearRoot() {
-        attributes[SLOT] = FiraSpecs.INVALID_VALUE;
+        mAttributes[SLOT] = FiraSpecs.INVALID_VALUE;
     }
 
     public void clearSlot() {
-        if (attributes[SLOT] != FiraSpecs.INVALID_VALUE) {
-            FiraRepository.deselectAdf(attributes[SLOT]);
+        if (mAttributes[SLOT] != FiraSpecs.INVALID_VALUE) {
+            FiraRepository.deselectAdf(mAttributes[SLOT]);
         }
-        attributes[SLOT] = FiraSpecs.INVALID_VALUE;
+        mAttributes[SLOT] = FiraSpecs.INVALID_VALUE;
     }
 
     public boolean isLocalSecure() {
-        return attributes[LOCAL_CHANNEL_STATE] == LOCAL_SECURE;
+        return mAttributes[LOCAL_CHANNEL_STATE] == LOCAL_SECURE;
     }
 
     public boolean isLocalUnSecure() {
-        return attributes[LOCAL_CHANNEL_STATE] == LOCAL_UNSECURE;
+        return mAttributes[LOCAL_CHANNEL_STATE] == LOCAL_UNSECURE;
     }
 
     public boolean isRemoteUnSecure() {
-        return attributes[REMOTE_CHANNEL_STATE] == REMOTE_UNSECURE;
+        return mAttributes[REMOTE_CHANNEL_STATE] == REMOTE_UNSECURE;
     }
 
     public boolean isRemoteSecure() {
-        return attributes[REMOTE_CHANNEL_STATE] == REMOTE_SECURE;
+        return mAttributes[REMOTE_CHANNEL_STATE] == REMOTE_SECURE;
     }
 
     public short getLocalChannelState() {
-        return attributes[LOCAL_CHANNEL_STATE];
+        return mAttributes[LOCAL_CHANNEL_STATE];
     }
 
     public short getRemoteChannelState() {
-        return attributes[REMOTE_CHANNEL_STATE];
+        return mAttributes[REMOTE_CHANNEL_STATE];
     }
 
     public void setLocalSecureState(byte secureState) {
-        attributes[LOCAL_CHANNEL_STATE] = secureState;
+        mAttributes[LOCAL_CHANNEL_STATE] = secureState;
     }
 
     public void setRemoteSecureState(byte secureState) {
-        attributes[REMOTE_CHANNEL_STATE] = secureState;
+        mAttributes[REMOTE_CHANNEL_STATE] = secureState;
     }
 
     public byte[] getDataCache() {
-        return (byte[]) dataCache[0];
+        return (byte[]) mDataCache[0];
     }
 
     public void associateDataCache(byte[] cache) {
-        dataCache[0] = cache;
+        mDataCache[0] = cache;
     }
 
     public short getOpState() {
-        return (byte) (attributes[OPERATION_STATE] & OP_STATE_MASK);
+        return (byte) (mAttributes[OPERATION_STATE] & OP_STATE_MASK);
     }
 
     public void setOpState(byte opState) {
-        attributes[OPERATION_STATE] = (byte) (attributes[OPERATION_STATE] | opState);
+        mAttributes[OPERATION_STATE] = (byte) (mAttributes[OPERATION_STATE] | opState);
     }
 
     public void clearOperationState() {
-        attributes[OPERATION_STATE] = OP_IDLE;
+        mAttributes[OPERATION_STATE] = OP_IDLE;
     }
 
     public void clearTerminateSessionOpState() {
-        attributes[OPERATION_STATE] = (byte) (attributes[OPERATION_STATE] & (byte) 0x00BF);
+        mAttributes[OPERATION_STATE] = (byte) (mAttributes[OPERATION_STATE] & (byte) 0x00BF);
     }
 
     public void setExtOptions(short extOpts) {
-        attributes[EXTENDED_OPTIONS_BYTE_1] = (byte) ((extOpts & (short) 0xFF00) >> 8);
-        attributes[EXTENDED_OPTIONS_BYTE_2] = (byte) (extOpts & (short) 0x00FF);
+        mAttributes[EXTENDED_OPTIONS_BYTE_1] = (byte) ((extOpts & (short) 0xFF00) >> 8);
+        mAttributes[EXTENDED_OPTIONS_BYTE_2] = (byte) (extOpts & (short) 0x00FF);
     }
 
     public boolean isAutoTerminate() {
-        return (attributes[EXTENDED_OPTIONS_BYTE_1] & EXT_OPTIONS_TERMINATE) != 0;
+        return (mAttributes[EXTENDED_OPTIONS_BYTE_1] & EXT_OPTIONS_TERMINATE) != 0;
     }
 
     public boolean isPrivacyEnforced() {
-        return (attributes[EXTENDED_OPTIONS_BYTE_1] & EXT_OPTIONS_PRIVACY) != 0;
+        return (mAttributes[EXTENDED_OPTIONS_BYTE_1] & EXT_OPTIONS_PRIVACY) != 0;
     }
 
     public boolean isDefaultKeyGeneration() {
-        return (attributes[EXTENDED_OPTIONS_BYTE_2] & EXT_OPTIONS_SESSION_KEY) == 0;
+        return (mAttributes[EXTENDED_OPTIONS_BYTE_2] & EXT_OPTIONS_SESSION_KEY) == 0;
     }
 
     public boolean isSessionKeyUsedForDerivation() {
-        return (attributes[EXTENDED_OPTIONS_BYTE_2] & EXT_OPTIONS_DERIVE_KEY) != 0;
+        return (mAttributes[EXTENDED_OPTIONS_BYTE_2] & EXT_OPTIONS_DERIVE_KEY) != 0;
     }
 
     // Input is OId. Returns set of KVNs if the adf identified by the oid can be
@@ -254,40 +254,40 @@ public class FiraAppletContext extends FiraClientContext {
 
     public short getSelectedKvn(byte kvnType, byte[] buf, short index) {
         byte[] mem = FiraRepository.getSlotSpecificAdfData(FiraSpecs.TAG_FIRA_SC_CRED,
-                (byte) getSlot(), retValues);
-        short tagEnd = FiraUtil.getTag(FiraSpecs.TAG_FIRA_SC_CRED, mem, retValues[1], retValues[2],
-                false, retValues);
-        short start = retValues[3];
-        short len = retValues[2];
+                (byte) getSlot(), sRetValues);
+        short tagEnd = FiraUtil.getTag(FiraSpecs.TAG_FIRA_SC_CRED, mem, sRetValues[1], sRetValues[2],
+                false, sRetValues);
+        short start = sRetValues[3];
+        short len = sRetValues[2];
 
         switch (kvnType) {
         case PRIVACY_KEY_SET:
             buf[index] = (byte) FiraSpecs.VAL_SC1_PRIVACY_KEY_SET;
             tagEnd = FiraUtil.search(FiraSpecs.TAG_FIRA_SC_SYMMETRIC_KEY_SET,
-                    FiraSpecs.TAG_FIRA_SC_CH_ID, buf, index, (short) 1, mem, start, len, retValues);
+                    FiraSpecs.TAG_FIRA_SC_CH_ID, buf, index, (short) 1, mem, start, len, sRetValues);
 
             if (tagEnd == FiraSpecs.INVALID_VALUE) {
                 buf[index] = (byte) FiraSpecs.VAL_SC2_PRIVACY_KEY_SET;
                 tagEnd = FiraUtil.search(FiraSpecs.TAG_FIRA_SC_SYMMETRIC_KEY_SET,
                         FiraSpecs.TAG_FIRA_SC_CH_ID, buf, index, (short) 1, mem, start, len,
-                        retValues);
+                        sRetValues);
             }
             break;
         case SC_KEY_SET:
             tagEnd = FiraUtil.getTag(FiraSpecs.TAG_FIRA_SC_SYMMETRIC_KEY_SET, mem, start, len, true,
-                    retValues);
+                    sRetValues);
             if (tagEnd == FiraSpecs.INVALID_VALUE) {
                 tagEnd = FiraUtil.getTag(FiraSpecs.TAG_FIRA_SC_ASYMMETRIC_KEY_SET, mem, start, len,
-                        true, retValues);
+                        true, sRetValues);
             }
             break;
         case BASE_KEY_SET:
             tagEnd = FiraUtil.getTag(FiraSpecs.TAG_FIRA_SC_SYMMETRIC_BASE_KEY, mem, start, len,
-                    true, retValues);
+                    true, sRetValues);
             break;
         case UWB_ROOT_KEY_SET:
             tagEnd = FiraUtil.getTag(FiraSpecs.TAG_FIRA_SC_UWB_RANGING_ROOT_KEY, mem, start, len,
-                    true, retValues);
+                    true, sRetValues);
             break;
 
         }
@@ -295,8 +295,8 @@ public class FiraAppletContext extends FiraClientContext {
         if (tagEnd == FiraSpecs.INVALID_VALUE) {
             return 0;
         } else {
-            Util.arrayCopyNonAtomic(mem, retValues[0], buf, index, (short) (tagEnd - retValues[0]));
-            return (short) (tagEnd - retValues[0]);
+            Util.arrayCopyNonAtomic(mem, sRetValues[0], buf, index, (short) (tagEnd - sRetValues[0]));
+            return (short) (tagEnd - sRetValues[0]);
         }
     }
 
@@ -309,24 +309,24 @@ public class FiraAppletContext extends FiraClientContext {
     // FiraApplet Specifications.
     public short getKeySet(short kvn, byte[] buf, short index) {
         byte[] mem = FiraRepository.getSlotSpecificAdfData(FiraSpecs.TAG_FIRA_SC_CRED,
-                (byte) getSlot(), retValues);
+                (byte) getSlot(), sRetValues);
         buf[index] = (byte) kvn;
-        short tagEnd = FiraUtil.getTag(FiraSpecs.TAG_FIRA_SC_CRED, mem, retValues[1], retValues[2],
-                false, retValues);
-        short start = retValues[3];
-        short len = retValues[2];
+        short tagEnd = FiraUtil.getTag(FiraSpecs.TAG_FIRA_SC_CRED, mem, sRetValues[1], sRetValues[2],
+                false, sRetValues);
+        short start = sRetValues[3];
+        short len = sRetValues[2];
         tagEnd = FiraUtil.search(FiraSpecs.TAG_FIRA_SC_SYMMETRIC_KEY_SET, FiraSpecs.TAG_FIRA_SC_KVN,
-                buf, index, (short) 1, mem, start, len, retValues);
+                buf, index, (short) 1, mem, start, len, sRetValues);
 
         if (tagEnd == FiraSpecs.INVALID_VALUE) {
             tagEnd = FiraUtil.search(FiraSpecs.TAG_FIRA_SC_ASYMMETRIC_KEY_SET,
-                    FiraSpecs.TAG_FIRA_SC_KVN, buf, index, (short) 1, mem, start, len, retValues);
+                    FiraSpecs.TAG_FIRA_SC_KVN, buf, index, (short) 1, mem, start, len, sRetValues);
             if (tagEnd == FiraSpecs.INVALID_VALUE) {
                 ISOException.throwIt(ISO7816.SW_RECORD_NOT_FOUND);
             }
         }
-        Util.arrayCopyNonAtomic(mem, retValues[0], buf, index, (short) (tagEnd - retValues[0]));
-        return retValues[2];
+        Util.arrayCopyNonAtomic(mem, sRetValues[0], buf, index, (short) (tagEnd - sRetValues[0]));
+        return sRetValues[2];
     }
 
     // TODO Currently we do not support ADF Provisioning scenario used by Manage
@@ -335,32 +335,32 @@ public class FiraAppletContext extends FiraClientContext {
         short ret = 0;
 
         if (getSlot() == FiraRepository.APPLET_SLOT
-                || attributes[SLOT] == FiraRepository.ROOT_SLOT) {
-            byte[] mem = FiraRepository.getSharedAdfData(FiraSpecs.TAG_PA_RECORD, retValues);
+                || mAttributes[SLOT] == FiraRepository.ROOT_SLOT) {
+            byte[] mem = FiraRepository.getSharedAdfData(FiraSpecs.TAG_PA_RECORD, sRetValues);
 
-            ret = getPublicKey(mem, retValues[1], retValues[2], FiraSpecs.TAG_PA_RECORD,
+            ret = getPublicKey(mem, sRetValues[1], sRetValues[2], FiraSpecs.TAG_PA_RECORD,
                     FiraSpecs.TAG_PA_CRED_PA_ID, kvn, FiraSpecs.TAG_PA_CRED_PA_CREDS, buf, index);
         } else {
             byte[] mem = FiraRepository.getSlotSpecificAdfData(
-                    FiraSpecs.TAG_STORED_ADF_PROVISIONING_CRED, (byte) getSlot(), retValues);
+                    FiraSpecs.TAG_STORED_ADF_PROVISIONING_CRED, (byte) getSlot(), sRetValues);
             // First read the cred record which may have more than one key sets
             short end = FiraUtil.getTag(FiraSpecs.TAG_STORED_ADF_PROVISIONING_CRED, mem,
-                    retValues[1], retValues[2], true, retValues);
+                    sRetValues[1], sRetValues[2], true, sRetValues);
 
             if (end == FiraSpecs.INVALID_VALUE) {// ADF Provisioning Credentials are not defined.
                 return 0;
             }
 
-            short start = retValues[3];
-            short len = retValues[2];
+            short start = sRetValues[3];
+            short len = sRetValues[2];
             ret = getPublicKey(mem, start, len, FiraSpecs.TAG_ADF_PROV_ASYMMETRIC_KEY_SET,
                     FiraSpecs.TAG_ADF_PROV_SEC_CH_KVN, kvn, FiraSpecs.TAG_ADF_PROV_CA_PUB_KEY, buf,
                     index);
             if (ret > 0) {
                 end = FiraUtil.getTag(FiraSpecs.TAG_ADF_PROV_SEC_CH_ID, mem, start, len, true,
-                        retValues);
+                        sRetValues);
                 if (end == FiraSpecs.INVALID_VALUE
-                        || mem[retValues[3]] != FiraSpecs.VAL_GP_SCP11c) {
+                        || mem[sRetValues[3]] != FiraSpecs.VAL_GP_SCP11c) {
                     return (short) 0;
                 }
             }
@@ -374,78 +374,78 @@ public class FiraAppletContext extends FiraClientContext {
         buf[start] = kvn;
         // Search for key set with given kvn
         short end = FiraUtil.search(keySetTag, keySetKvnTag, buf, start, (short) 1, mem, memStart,
-                memLen, retValues);
-        memStart = retValues[3];
-        memLen = retValues[2];
+                memLen, sRetValues);
+        memStart = sRetValues[3];
+        memLen = sRetValues[2];
         // Get the credentials
-        end = FiraUtil.getTag(credTag, mem, memStart, memLen, true, retValues);
+        end = FiraUtil.getTag(credTag, mem, memStart, memLen, true, sRetValues);
 
         if (end == FiraSpecs.INVALID_VALUE) {
             return FiraSpecs.INVALID_VALUE;
         }
-        Util.arrayCopyNonAtomic(mem, retValues[3], buf, start, retValues[2]);
-        return retValues[2];
+        Util.arrayCopyNonAtomic(mem, sRetValues[3], buf, start, sRetValues[2]);
+        return sRetValues[2];
     }
 
     public short getSDCertificate(byte[] buf, short index) {
-        byte[] mem = FiraRepository.getAppletData(FiraSpecs.TAG_APPLET_CERT_STORE, retValues);
-        short end = FiraUtil.getTag(FiraSpecs.TAG_APPLET_CERT_STORE, mem, retValues[1],
-                retValues[2], true, retValues);
+        byte[] mem = FiraRepository.getAppletData(FiraSpecs.TAG_APPLET_CERT_STORE, sRetValues);
+        short end = FiraUtil.getTag(FiraSpecs.TAG_APPLET_CERT_STORE, mem, sRetValues[1],
+                sRetValues[2], true, sRetValues);
 
         // This must never happen if the provisioning is done properly.
         if (end == FiraSpecs.INVALID_VALUE) {
             return 0;
         }
-        Util.arrayCopyNonAtomic(mem, retValues[3], buf, index, retValues[2]);
-        return retValues[2];
+        Util.arrayCopyNonAtomic(mem, sRetValues[3], buf, index, sRetValues[2]);
+        return sRetValues[2];
     }
 
     public short getSDSecretKey(byte[] buf, short index) {
-        byte[] mem = FiraRepository.getAppletData(FiraSpecs.TAG_APPLET_SECRET, retValues);
-        short end = FiraUtil.getTag(FiraSpecs.TAG_APPLET_SECRET, mem, retValues[1], retValues[2],
-                true, retValues);
+        byte[] mem = FiraRepository.getAppletData(FiraSpecs.TAG_APPLET_SECRET, sRetValues);
+        short end = FiraUtil.getTag(FiraSpecs.TAG_APPLET_SECRET, mem, sRetValues[1], sRetValues[2],
+                true, sRetValues);
 
         // This must never happen if the provisioning is done properly.
         if (end == FiraSpecs.INVALID_VALUE) {
             return 0;
         }
-        Util.arrayCopyNonAtomic(mem, retValues[3], buf, index, retValues[2]);
-        return retValues[2];
+        Util.arrayCopyNonAtomic(mem, sRetValues[3], buf, index, sRetValues[2]);
+        return sRetValues[2];
     }
 
     public short getPendingEvent() {
-        return attributes[EVENT];
+        return mAttributes[EVENT];
     }
 
     public void signal(short eventId) {
-        attributes[EVENT] = (byte) eventId;
+        mAttributes[EVENT] = (byte) eventId;
     }
 
     public void clearPendingEvent() {
-        attributes[EVENT] = EVENT_INVALID;
+        mAttributes[EVENT] = EVENT_INVALID;
     }
 
     public void enableGetSessionDataOpState() {
-        attributes[OPERATION_STATE] = (byte) (attributes[OPERATION_STATE] | OP_GET_SESSION_DATA);
+        mAttributes[OPERATION_STATE] = (byte) (mAttributes[OPERATION_STATE] | OP_GET_SESSION_DATA);
     }
 
     public void enablePutSessionDataOpState() {
-        attributes[OPERATION_STATE] = (byte) (attributes[OPERATION_STATE] | OP_PUT_SESSION_DATA);
+        mAttributes[OPERATION_STATE] = (byte) (mAttributes[OPERATION_STATE] | OP_PUT_SESSION_DATA);
     }
 
     public boolean isGetSessionData() {
-        return (byte) (attributes[OPERATION_STATE] & OP_GET_SESSION_DATA) != 0;
+        return (byte) (mAttributes[OPERATION_STATE] & OP_GET_SESSION_DATA) != 0;
     }
 
     public boolean isPutSessionData() {
-        return (byte) (attributes[OPERATION_STATE] & OP_PUT_SESSION_DATA) != 0;
+        return (byte) (mAttributes[OPERATION_STATE] & OP_PUT_SESSION_DATA) != 0;
     }
 
     public void enableTerminateSessionOpState() {
-        attributes[OPERATION_STATE] = (byte) (attributes[OPERATION_STATE] | OP_TERMINATE_SESSION);
+        mAttributes[OPERATION_STATE] = (byte) (mAttributes[OPERATION_STATE] | OP_TERMINATE_SESSION);
     }
 
     public boolean isTerminateSession() {
-        return (byte) (attributes[OPERATION_STATE] & OP_TERMINATE_SESSION) != 0;
+        return (byte) (mAttributes[OPERATION_STATE] & OP_TERMINATE_SESSION) != 0;
     }
 }

@@ -22,19 +22,19 @@ import javacard.framework.JCSystem;
 public class FiraServiceAppletHandler {
 
     private static final byte SERVICE_ID = (byte) 0xFA;
-    private final boolean[] reserved;
-    private FiRaServiceApplet appletRef;
+    private final boolean[] mReserved;
+    private FiRaServiceApplet mAppletRef;
     private AID appletId;
 
     public FiraServiceAppletHandler(byte[] buf, short inputStart, byte inputLen) {
         appletId = new AID(buf, inputStart, inputLen);
-        reserved = JCSystem.makeTransientBooleanArray((short) 1, JCSystem.CLEAR_ON_RESET);
-        reserved[0] = false;
+        mReserved = JCSystem.makeTransientBooleanArray((short) 1, JCSystem.CLEAR_ON_RESET);
+        mReserved[0] = false;
     }
 
     public void delete() {
         appletId = null;
-        appletRef = null;
+        mAppletRef = null;
         JCSystem.requestObjectDeletion();
     }
 
@@ -42,16 +42,16 @@ public class FiraServiceAppletHandler {
         FiRaServiceApplet appletRef = (FiRaServiceApplet) JCSystem
                 .getAppletShareableInterfaceObject(appletId, SERVICE_ID);
         len = appletRef.setCallerOid(oid, index, len, null, (short) 0);
-        reserved[0] = true;
+        mReserved[0] = true;
         return len;
     }
 
     public boolean isReserved() {
-        return reserved[0];
+        return mReserved[0];
     }
 
     public void cleanUp() {
-        reserved[0] = false;
+        mReserved[0] = false;
         FiRaServiceApplet appletRef = (FiRaServiceApplet) JCSystem
                 .getAppletShareableInterfaceObject(appletId, SERVICE_ID);
         appletRef.processFiRaServiceCleanup();

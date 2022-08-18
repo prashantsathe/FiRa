@@ -128,7 +128,7 @@ public class FiraResponder {
         // decrypt Msg.1.enc (copy in to mInData), validate Cert.1 and shall then verify Sig.1
         // Msg.1.enc = ENC_CBC(KSesAuthEnc, Sig.1 ║ Cert.1 ║ Padding) with zeroed IV
         outLen = mCrypto.genAes128CbcNopadOutput(Cipher.MODE_DECRYPT, mOutData, kdkLength,
-                Scp3Lib.mNullBytes16, (short) 0, BlOCK_16BYTES, dataBuff,
+                Scp3Lib.sNullBytes16, (short) 0, BlOCK_16BYTES, dataBuff,
                 (short) (cDataBuffOffset + 2 + msg1EncLengthByteCnt + msg7CByteCnt),
                 msg1EncLength, mInData, (short) 0);
 
@@ -236,7 +236,7 @@ public class FiraResponder {
                 (short) (msg2plIndex - msg2extIndex)) + msg2extIndex);
 
         short msg2EncLen = mCrypto.genAes128CbcNopadOutput(Cipher.MODE_ENCRYPT, mOutData, kdkLength,
-                Scp3Lib.mNullBytes16, (short) 0, SIGNATURE_BLOCK_SIZE, mInData, msg2extIndex,
+                Scp3Lib.sNullBytes16, (short) 0, SIGNATURE_BLOCK_SIZE, mInData, msg2extIndex,
                 (short) (msg2plIndex - msg2extIndex), mInData, msg2plIndex);
 
         // set security level
@@ -306,7 +306,7 @@ public class FiraResponder {
 
         // calculate IV
         short ivLen = mCrypto.genAes128CbcNopadOutput(Cipher.MODE_ENCRYPT, keyBuff,
-                macKeyBuffOffset, Scp3Lib.mNullBytes16, (short) 0, BlOCK_16BYTES, mInData, initialOffset,
+                macKeyBuffOffset, Scp3Lib.sNullBytes16, (short) 0, BlOCK_16BYTES, mInData, initialOffset,
                 BlOCK_16BYTES, mOutData, (short) 0);
 
         short eICCLen = mCrypto.genAes128CbcNopadOutput(Cipher.MODE_ENCRYPT, keyBuff,
@@ -377,7 +377,7 @@ public class FiraResponder {
 
         // IV calculation
         short outLen = mCrypto.genAes128CbcNopadOutput(Cipher.MODE_ENCRYPT, mInData, macKeyOffset,
-                Scp3Lib.mNullBytes16, (short) 0, BlOCK_16BYTES, mContext.mBuf,
+                Scp3Lib.sNullBytes16, (short) 0, BlOCK_16BYTES, mContext.mBuf,
                 O_RANDOM_ICC, BlOCK_16BYTES, mOutData, (short) 0);
 
         outLen = mCrypto.genAes128CbcNopadOutput(Cipher.MODE_DECRYPT, mInData, macKeyOffset,
@@ -636,7 +636,7 @@ public class FiraResponder {
                         mInData, IN_DATA_KEYSET_OFFSET, adfLen);
 
                 short eLength = mCrypto.genAes128CbcNopadOutput(Cipher.MODE_ENCRYPT, mInData,
-                        keyOffset, Scp3Lib.mNullBytes16, (short) 0, BlOCK_16BYTES, mInData,
+                        keyOffset, Scp3Lib.sNullBytes16, (short) 0, BlOCK_16BYTES, mInData,
                         (short) 0, index, mOutData, (short) 0);
 
                 // Cryptogram = {0x85 ║ L ║ (RandomData1 ║ RND.IV ║ E)}

@@ -19,15 +19,15 @@ import javacard.framework.Util;
 
 public class BerTlvBuilder {
 
-    private BerStack berStack;
+    private BerStack mBerStack;
     private static final short DEFAULT_STACK_SIZE = 20;
 
     public BerTlvBuilder() {
-        berStack = new BerStack(DEFAULT_STACK_SIZE);
+        mBerStack = new BerStack(DEFAULT_STACK_SIZE);
     }
 
     public BerTlvBuilder(short stackSize) {
-        berStack = new BerStack(stackSize);
+        mBerStack = new BerStack(stackSize);
     }
 
     public static short addTlv(byte[] buffer, short bufferOffset, short bufferLength,
@@ -94,7 +94,7 @@ public class BerTlvBuilder {
     public short endCOTag(byte[] buffer, byte[] tag, short offset) {
 
         short rOffset = offset;
-        short startOffset = berStack.pop();
+        short startOffset = mBerStack.pop();
         short lengthBytesCnt = getLengthByteCnt((short) (offset - startOffset));
 
         /* Return if buffer overflow is going to happen */
@@ -117,7 +117,7 @@ public class BerTlvBuilder {
     public short endCOTag(byte[] buffer, short offset, byte tag) {
 
         short rOffset = offset;
-        short startOffset = berStack.pop();
+        short startOffset = mBerStack.pop();
         short lengthBytesCnt = getLengthByteCnt((short) (offset - startOffset));
 
         /* Return if buffer overflow is going to happen */
@@ -135,11 +135,11 @@ public class BerTlvBuilder {
     }
 
     public void startCOTag(short offset) {
-        berStack.push(offset);
+        mBerStack.push(offset);
     }
 
     public void reset() {
-        berStack.resetStack();
+        mBerStack.resetStack();
     }
 
     /* return number of bytes required for length*/

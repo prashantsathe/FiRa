@@ -33,9 +33,9 @@ public class Scp3Lib {
     private byte[] mS_KEY_SIZE;
     private byte[] mEncryptionCounter;
     private byte[] mEncryptionCounterResponse;
-    public static byte[] mNullBytes16;
-    private static byte[] mInData;
-    private static byte[] mOutData;
+    public static byte[] sNullBytes16;
+    private static byte[] sInData;
+    private static byte[] sOutData;
 
     private Crypto mCrypto;
 
@@ -53,10 +53,10 @@ public class Scp3Lib {
 
     private void InitStaticFields() {
         // Check just one field for NULL
-        if (mInData == null) {
-            mNullBytes16 = JCSystem.makeTransientByteArray(BLOCK16, JCSystem.CLEAR_ON_RESET);
-            mInData = JCSystem.makeTransientByteArray((short) 1024, JCSystem.CLEAR_ON_RESET);
-            mOutData = JCSystem.makeTransientByteArray((short) 1024, JCSystem.CLEAR_ON_RESET);
+        if (sInData == null) {
+            sNullBytes16 = JCSystem.makeTransientByteArray(BLOCK16, JCSystem.CLEAR_ON_RESET);
+            sInData = JCSystem.makeTransientByteArray((short) 1024, JCSystem.CLEAR_ON_RESET);
+            sOutData = JCSystem.makeTransientByteArray((short) 1024, JCSystem.CLEAR_ON_RESET);
         }
     }
 
@@ -181,15 +181,15 @@ public class Scp3Lib {
         // length is 16 bytes). Hence the eight most significant bytes are considered.
         if (resApdu) {
             if ((securityLevel & R_MAC) == R_MAC) {
-                // Compare R-Mac. copy data and status in mInData
-                Util.arrayCopyNonAtomic(buff, buffOffset, mInData, (short) 0,
+                // Compare R-Mac. copy data and status in sInData
+                Util.arrayCopyNonAtomic(buff, buffOffset, sInData, (short) 0,
                         (short) (buffLen - 10 /* 8 MAC + 2 Status*/));
                 Util.arrayCopyNonAtomic(buff, (short) (buffOffset + buffLen - 10),
-                        mInData, (short) (buffLen - 10), (short) 8);
+                        sInData, (short) (buffLen - 10), (short) 8);
 
-                if (mCrypto.genCmacAes128(mS_RMAC, (short) 0, mS_KEY_SIZE[0], mInData, (short) 0,
-                        (short) (buffLen - 8), mChainingValue, (short) 0, mOutData, (short) 0)
-                        != BLOCK16 || Util.arrayCompare(mOutData, (short) 0, buff, 
+                if (mCrypto.genCmacAes128(mS_RMAC, (short) 0, mS_KEY_SIZE[0], sInData, (short) 0,
+                        (short) (buffLen - 8), mChainingValue, (short) 0, sOutData, (short) 0)
+                        != BLOCK16 || Util.arrayCompare(sOutData, (short) 0, buff, 
                                 (short) (buffOffset + buffLen - 8), (short) 8) != (byte) 0x00) {
                         return false;
                 }
@@ -197,8 +197,8 @@ public class Scp3Lib {
         } else {
             // Compare CMAC
             if ((securityLevel & C_MAC) == C_MAC)
-                if (genCmac(buff, buffOffset, (short) (buffLen - 8), mOutData, (short) 0)
-                        != BLOCK16 || Util.arrayCompare(mOutData, (short) 0, buff,
+                if (genCmac(buff, buffOffset, (short) (buffLen - 8), sOutData, (short) 0)
+                        != BLOCK16 || Util.arrayCompare(sOutData, (short) 0, buff,
                                 (short) (buffOffset + buffLen - 8), (short) 8) != (byte) 0x00) {
                     return false;
                 }
@@ -207,7 +207,7 @@ public class Scp3Lib {
         return true;
     }
 
-    // data gets stored at 'mOutData' at 0 offset
+    // data gets stored at 'sOutData' at 0 offset
     private short encryptIV(boolean resApdu) {
 
         if (resApdu) {
@@ -219,8 +219,8 @@ public class Scp3Lib {
         }
         // encrypt IV
         return mCrypto.genAes128CbcNopadOutput(Cipher.MODE_ENCRYPT, mS_ENC, (short) 0,
-                mNullBytes16, (short) 0, BLOCK16, resApdu ? mEncryptionCounterResponse : mEncryptionCounter,
-                (short) 0, (short) 16, mOutData, (short) 0);
+                sNullBytes16, (short) 0, BLOCK16, resApdu ? mEncryptionCounterResponse : mEncryptionCounter,
+                (short) 0, (short) 16, sOutData, (short) 0);
     }
 
     private short decryptData(byte securityLevel, byte[] buff, short buffOffset, short buffLen, boolean resApdu) {
@@ -230,17 +230,17 @@ public class Scp3Lib {
 
         if (resApdu) {
             if ((securityLevel & R_ENCRYPTION) == R_ENCRYPTION) {
-                // encrypt IV, data is stored in mOutData at 0
+                // encrypt IV, data is stored in sOutData at 0
                 outLen = encryptIV(resApdu);
 
                 // Decrypt the data
                 // NOTE: size greater than 8+2 is already checked in verifyMac()
                 short dataLen = (short) (buffLen - 10);
-                Util.arrayCopyNonAtomic(buff, buffOffset, mInData, (short) 0, dataLen);
+                Util.arrayCopyNonAtomic(buff, buffOffset, sInData, (short) 0, dataLen);
                 dataLen = mCrypto.genAes128CbcNopadOutput(Cipher.MODE_DECRYPT, mS_ENC, (short) 0,
-                                        mOutData, (short) 0, outLen, mInData, (short) 0, dataLen,
-                                        mOutData, outLen);
-                Util.arrayCopyNonAtomic(mOutData, outLen, buff, buffOffset,  dataLen);
+                                        sOutData, (short) 0, outLen, sInData, (short) 0, dataLen,
+                                        sOutData, outLen);
+                Util.arrayCopyNonAtomic(sOutData, outLen, buff, buffOffset,  dataLen);
                 outLen = dataLen;
             } else {
                 outLen = (short) ((securityLevel & R_MAC) == R_MAC ? buffLen - 8 : buffLen);
@@ -249,21 +249,21 @@ public class Scp3Lib {
             if ((securityLevel & C_DECRYPTION) == C_DECRYPTION) {
                 short bufferCdOffset = (short) (buffOffset + cdOffset);
 
-                // encrypt IV, data is stored in mOutData at 0
+                // encrypt IV, data is stored in sOutData at 0
                 outLen = encryptIV(resApdu);
                 // decrypt the data
                 outLen = mCrypto.genAes128CbcNopadOutput(Cipher.MODE_DECRYPT, mS_ENC, (short) 0,
-                        mOutData, (short) 0, outLen, buff, bufferCdOffset, (short) (cdLength - 8),
-                        mInData, (short) 0); // copy decrypted data in mInData
+                        sOutData, (short) 0, outLen, buff, bufferCdOffset, (short) (cdLength - 8),
+                        sInData, (short) 0); // copy decrypted data in sInData
 
-                outLen = getUnpadOffset(mInData, (short) 0, outLen); // offSet80
+                outLen = getUnpadOffset(sInData, (short) 0, outLen); // offSet80
 
                 // copy data to buffer
                 // Supporting only extended length
                 cdOffset = (short) 7;
                 buff[(short) (bufferCdOffset - 3)] = (byte) 0x00;
                 Util.setShort(buff, (short) (bufferCdOffset - 2), outLen);
-                Util.arrayCopyNonAtomic(mInData, (short) 0, buff, bufferCdOffset, outLen);
+                Util.arrayCopyNonAtomic(sInData, (short) 0, buff, bufferCdOffset, outLen);
 
                 // return value should be cdOffset + outLen
                 outLen += cdOffset;
@@ -321,16 +321,16 @@ public class Scp3Lib {
         // First: Encrypt data if bufLen > 0 & C_DECRYPTION, based on
         // 'GPC_2.3_D_SCP03_v1.1.2_PublicRelease.pdf' figure 6-4
         if ((securityLevel & C_DECRYPTION) == C_DECRYPTION) {
-            // encrypt the IV, data is stored in mOutData at 0
+            // encrypt the IV, data is stored in sOutData at 0
             outLen = encryptIV(false);
 
             // Encrypt the data
-            Util.arrayCopyNonAtomic(buff, (short) (buffOffset + cdOffset), mInData, (short) 0,
+            Util.arrayCopyNonAtomic(buff, (short) (buffOffset + cdOffset), sInData, (short) 0,
                     cdLength);
-            short totalLenWithpad = pad80(mInData, (short) 0, cdLength, BLOCK16); // 16 is a block size
+            short totalLenWithpad = pad80(sInData, (short) 0, cdLength, BLOCK16); // 16 is a block size
             outOffset = outLen;
             outLen = mCrypto.genAes128CbcNopadOutput(Cipher.MODE_ENCRYPT, mS_ENC, (short) 0,
-                    mOutData, (short) 0,outLen, mInData, (short) 0, totalLenWithpad, mOutData,
+                    sOutData, (short) 0,outLen, sInData, (short) 0, totalLenWithpad, sOutData,
                     outOffset);
             cipheredData = true;
         }
@@ -338,36 +338,36 @@ public class Scp3Lib {
         // Second: calculate MAC
         if ((securityLevel & C_MAC) == C_MAC) {
             // copy CLA/INS/p1/p2
-            Util.arrayCopyNonAtomic(buff, buffOffset, mInData, (short) 0, (short) 4);
+            Util.arrayCopyNonAtomic(buff, buffOffset, sInData, (short) 0, (short) 4);
             // only support extended length
-            mInData[4] = 0x00;
+            sInData[4] = 0x00;
 
             if (cipheredData) {
                 // ciphered data
-                Util.setShort(mInData, (short) 5, (short) (outLen + 8)); // LCC = lc + 8
-                Util.arrayCopyNonAtomic(mOutData, outOffset, mInData, (short) 7, outLen);
+                Util.setShort(sInData, (short) 5, (short) (outLen + 8)); // LCC = lc + 8
+                Util.arrayCopyNonAtomic(sOutData, outOffset, sInData, (short) 7, outLen);
             } else {
                 outLen = cdLength;
-                Util.setShort(mInData, (short) 5, (short) (outLen + 8)); // LCC = lc + 8
-                Util.arrayCopyNonAtomic(buff, (short) (buffOffset + cdOffset), mInData, (short) 7,
+                Util.setShort(sInData, (short) 5, (short) (outLen + 8)); // LCC = lc + 8
+                Util.arrayCopyNonAtomic(buff, (short) (buffOffset + cdOffset), sInData, (short) 7,
                         outLen);
             }
             outLen += 7;
 
-            if (genCmac(mInData, (short) 0, outLen, mOutData, (short) 0) != BLOCK16) {
+            if (genCmac(sInData, (short) 0, outLen, sOutData, (short) 0) != BLOCK16) {
                 return 0;
             }
 
-            Util.arrayCopyNonAtomic(mInData, (short) 0, buff, buffOffset, outLen);
+            Util.arrayCopyNonAtomic(sInData, (short) 0, buff, buffOffset, outLen);
             // The Secure channel shall support a MAC of 8 bytes length (even if the AES block
             // length is 16 bytes). Hence the eight most significant bytes are considered.
-            Util.arrayCopyNonAtomic(mOutData, (short) 0, buff, (short) (buffOffset + outLen),
+            Util.arrayCopyNonAtomic(sOutData, (short) 0, buff, (short) (buffOffset + outLen),
                     (short) 8);
             outLen += 8;
         } else {
             if (cipheredData) {
                 // ciphered data
-                Util.arrayCopyNonAtomic(mOutData, outOffset, buff, buffOffset, outLen);
+                Util.arrayCopyNonAtomic(sOutData, outOffset, buff, buffOffset, outLen);
             } else {
                 return buffLen;
             }
@@ -383,46 +383,46 @@ public class Scp3Lib {
         // First: Encrypt data if buffLen > 2 & R_ENCRYPTION based on 'GPC_2.3_D_SCP03_v1.1.2_PublicRelease.pdf'
         // figure 6-5
         if (((securityLevel & R_ENCRYPTION) == R_ENCRYPTION) && (buffLen > 2 /*status*/)) {
-            // encrypt the IV, data is stored in mOutData at 0
+            // encrypt the IV, data is stored in sOutData at 0
             outLen = encryptIV(true);
 
             // Encrypt the data
-            Util.arrayCopyNonAtomic(buff, buffOffset, mInData, (short) 0, (short) (buffLen - 2));
-            short totalLenWithpad = pad80(mInData, (short) 0, (short) (buffLen - 2), BLOCK16); // 16 is a block size
+            Util.arrayCopyNonAtomic(buff, buffOffset, sInData, (short) 0, (short) (buffLen - 2));
+            short totalLenWithpad = pad80(sInData, (short) 0, (short) (buffLen - 2), BLOCK16); // 16 is a block size
             outOffset = outLen;
             outLen = mCrypto.genAes128CbcNopadOutput(Cipher.MODE_ENCRYPT, mS_ENC, (short) 0,
-                                    mOutData, (short) 0, outLen, mInData, (short) 0, totalLenWithpad,
-                                    mOutData, outOffset);
+                                    sOutData, (short) 0, outLen, sInData, (short) 0, totalLenWithpad,
+                                    sOutData, outOffset);
             cipheredData = true;
         }
 
         if ((securityLevel & R_MAC) == R_MAC && (buffLen > 2 /*status*/)) {
             // Second: calculate MAC
             if (cipheredData) {
-                Util.arrayCopyNonAtomic(mOutData, outOffset, mInData, (short) 0, outLen); // ciphered data
+                Util.arrayCopyNonAtomic(sOutData, outOffset, sInData, (short) 0, outLen); // ciphered data
             } else {
-                Util.arrayCopyNonAtomic(buff, buffOffset, mInData, (short) 0, buffLen); // un-ciphered data
+                Util.arrayCopyNonAtomic(buff, buffOffset, sInData, (short) 0, buffLen); // un-ciphered data
                 outLen = buffLen;
             }
 
-            Util.arrayCopyNonAtomic(buff, (short) (buffOffset + buffLen - 2), mInData,
+            Util.arrayCopyNonAtomic(buff, (short) (buffOffset + buffLen - 2), sInData,
                                     outLen, (short) 2); // copy status
             outLen += 2;
 
-            if (mCrypto.genCmacAes128(mS_RMAC, (short) 0, mS_KEY_SIZE[0], mInData, (short) 0,
-                    outLen, mChainingValue, (short) 0, mOutData, (short) 0) != BLOCK16) {
+            if (mCrypto.genCmacAes128(mS_RMAC, (short) 0, mS_KEY_SIZE[0], sInData, (short) 0,
+                    outLen, mChainingValue, (short) 0, sOutData, (short) 0) != BLOCK16) {
                     return 0;
             }
 
             outLen -= 2;
-            Util.arrayCopyNonAtomic(mInData, (short) 0, buff, buffOffset, outLen);
+            Util.arrayCopyNonAtomic(sInData, (short) 0, buff, buffOffset, outLen);
             // The Secure channel shall support a MAC of 8 bytes length (even if the AES block length is 16 bytes).
             // Hence the eight most significant bytes are considered.
-            Util.arrayCopyNonAtomic(mOutData, (short) 0, buff, (short) (buffOffset + outLen), (short) 8);
+            Util.arrayCopyNonAtomic(sOutData, (short) 0, buff, (short) (buffOffset + outLen), (short) 8);
             outLen += 8;
         } else {
             if (cipheredData)
-                Util.arrayCopyNonAtomic(mOutData, outOffset, buff, buffOffset, outLen); // ciphered data
+                Util.arrayCopyNonAtomic(sOutData, outOffset, buff, buffOffset, outLen); // ciphered data
             else
                 outLen = buffLen;
         }
@@ -467,30 +467,32 @@ public class Scp3Lib {
      *
      * @return length of KDF data, if successful
      */
-    public short scp03KDF(byte[] keyBuff, short keyBuffOffset, byte[] contextBuff, short contextBuffOffset,
-            short contextBuffLength, byte deviationConstant, boolean uwbSessionKeyFlag, byte[] outData,
-            short outDataOffset) {
+    public short scp03KDF(byte[] keyBuff, short keyBuffOffset, byte[] contextBuff,
+            short contextBuffOffset, short contextBuffLength, byte deviationConstant,
+            boolean uwbSessionKeyFlag, byte[] outData, short outDataOffset) {
 
         // 1. section 6.2.2 - Challenges and Authentication Cryptograms (SCP03_v1.1.2_PublicRelease)
         // 2. CSML - 7.5.3.3.1 Default UWB Session Key and UWB Session ID
         // label
-        Util.arrayFillNonAtomic(mInData, (short) 0, uwbSessionKeyFlag ? (short) 7 : (short) 11, (byte) 0x00);
+        Util.arrayFillNonAtomic(sInData, (short) 0, uwbSessionKeyFlag ? (short) 7 : (short) 11,
+                (byte) 0x00);
 
         if (uwbSessionKeyFlag) {
             // 0x46 0x49 0x52 0x41 (FIRA in hex)
-            mInData[7] = (byte) 0x46;
-            mInData[8] = (byte) 0x49;
-            mInData[9] = (byte) 0x52;
-            mInData[10] = (byte) 0x41;
+            sInData[7] = (byte) 0x46;
+            sInData[8] = (byte) 0x49;
+            sInData[9] = (byte) 0x52;
+            sInData[10] = (byte) 0x41;
         }
 
-        mInData[11] = deviationConstant;
+        sInData[11] = deviationConstant;
 
         // L
-        mInData[12] = 0x00;
-        mInData[13] = 0x40;
+        sInData[12] = 0x00;
+        sInData[13] = 0x40;
 
-        return mCrypto.cmacKdfCounterMode(keyBuff, keyBuffOffset, mInData, (short) 0, (short) 12, mInData, (short) 12,
-                (short) 2, (byte) 0x01, contextBuff, contextBuffOffset, contextBuffLength, outData, outDataOffset);
+        return mCrypto.cmacKdfCounterMode(keyBuff, keyBuffOffset, sInData, (short) 0, (short) 12,
+                sInData, (short) 12, (short) 2, (byte) 0x01, contextBuff, contextBuffOffset,
+                contextBuffLength, outData, outDataOffset);
     }
 }

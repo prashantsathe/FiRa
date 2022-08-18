@@ -212,7 +212,6 @@ public class Crypto {
         return index >= keyDataLen ? keyDataLen : -1;
     }
 
-    // TODO: change the CMAC calculation logic
     //////////////
     private static AESKey setAESkey(byte[] key, short keyOffset, short keyLength) {
 

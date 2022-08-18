@@ -51,46 +51,46 @@ public class FiraApplet extends Applet implements AppletEvent, MultiSelectable, 
     private static final byte P1_ADD_PA_CRED = 1;
     private static final byte P1_REMOVE_PA_CRED = 2;
 
-    private static AESKey masterKey;
-    private static short[] retValues;
-    private static boolean[] flags;
-    private static byte[] dataCache;
-    private static FiraServiceAppletHandler[] serviceApplet;
+    private static AESKey sMasterKey;
+    private static short[] sRetValues;
+    private static boolean[] sFlags;
+    private static byte[] sDataCache;
+    private static FiraServiceAppletHandler[] sServiceApplet;
 
-    private static byte[] mResetFlag;
+    private static byte[] sResetFlag;
 
     /**
      * Constructor.
      */
     public FiraApplet() {
-        retValues = JCSystem.makeTransientShortArray((short) 5, JCSystem.CLEAR_ON_DESELECT);
+        sRetValues = JCSystem.makeTransientShortArray((short) 5, JCSystem.CLEAR_ON_DESELECT);
 
         // Following memory is used mainly for store data and manage adf commands.
         // TODO determine whether we require clear on reset or clear on deselect.
-        dataCache = JCSystem.makeTransientByteArray(
+        sDataCache = JCSystem.makeTransientByteArray(
                 (short) (FiraSpecs.IMPL_TRANSIENT_ADF_SIZE + FiraSpecs.IMPL_PERSISTENT_ADF_SIZE),
                 JCSystem.CLEAR_ON_DESELECT);
-        flags = JCSystem.makeTransientBooleanArray(NUM_OF_FLAGS, JCSystem.CLEAR_ON_DESELECT);
-        flags[DATA_CACHE_IN_USE] = false;
+        sFlags = JCSystem.makeTransientBooleanArray(NUM_OF_FLAGS, JCSystem.CLEAR_ON_DESELECT);
+        sFlags[DATA_CACHE_IN_USE] = false;
         // Create Master Key used for Import ADF.
         // TODO make master key upgradeable.
-        masterKey = (AESKey) KeyBuilder.buildKey(KeyBuilder.TYPE_AES, (short) 128, false);
-        randomNumber(dataCache, (short) 0, (short) 16);
-        masterKey.setKey(dataCache, (short) 0);
+        sMasterKey = (AESKey) KeyBuilder.buildKey(KeyBuilder.TYPE_AES, (short) 128, false);
+        randomNumber(sDataCache, (short) 0, (short) 16);
+        sMasterKey.setKey(sDataCache, (short) 0);
         resetDataCache();
         FiraAppletContext.init();
         FiraRepository.init();
 
-        mResetFlag = JCSystem.makeTransientByteArray((short) 1, JCSystem.CLEAR_ON_RESET);
-        // set mResetFlag
-        mResetFlag[0] = 0x01;
+        sResetFlag = JCSystem.makeTransientByteArray((short) 1, JCSystem.CLEAR_ON_RESET);
+        // set sResetFlag
+        sResetFlag[0] = 0x01;
     }
 
     /**
      * @return True if the data cache is free,
      */
     private static boolean isDataCacheFree() {
-        return !flags[DATA_CACHE_IN_USE];
+        return !sFlags[DATA_CACHE_IN_USE];
     }
 
     /**
@@ -102,31 +102,31 @@ public class FiraApplet extends Applet implements AppletEvent, MultiSelectable, 
      */
     public static void install(byte[] bArray, short bOffset, byte bLength) {
         new FiraApplet().register();
-        serviceApplet = new FiraServiceAppletHandler[FiraSpecs.IMPL_MAX_SERVICE_APPLETS_COUNT];
+        sServiceApplet = new FiraServiceAppletHandler[FiraSpecs.IMPL_MAX_SERVICE_APPLETS_COUNT];
     }
 
     private static void resetDataCache() {
-        flags[DATA_CACHE_IN_USE] = false;
-        Util.arrayFillNonAtomic(dataCache, (short) 0, (short) dataCache.length, (byte) 0);
+        sFlags[DATA_CACHE_IN_USE] = false;
+        Util.arrayFillNonAtomic(sDataCache, (short) 0, (short) sDataCache.length, (byte) 0);
     }
 
     private static void reserveDataCache() {
         if (!isDataCacheFree()) {
             ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
         }
-        flags[DATA_CACHE_IN_USE] = true;
+        sFlags[DATA_CACHE_IN_USE] = true;
     }
 
     private static void addToCache(byte[] buf, short start, short len) {
         // First two bytes is the length of the stored data.
-        short dataLen = Util.getShort(dataCache, (short) 0);
+        short dataLen = Util.getShort(sDataCache, (short) 0);
 
-        if ((short) (dataLen + len) > (short) dataCache.length) {
+        if ((short) (dataLen + len) > (short) sDataCache.length) {
             ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
         }
-        Util.arrayCopyNonAtomic(buf, start, dataCache, (short) (DATA_CACHE_HEADER_LEN + dataLen),
+        Util.arrayCopyNonAtomic(buf, start, sDataCache, (short) (DATA_CACHE_HEADER_LEN + dataLen),
                 len);
-        Util.setShort(dataCache, (short) 0, (short) (dataLen + len));
+        Util.setShort(sDataCache, (short) 0, (short) (dataLen + len));
     }
 
     private void randomNumber(byte[] buf, short index, short len) {
@@ -185,12 +185,12 @@ public class FiraApplet extends Applet implements AppletEvent, MultiSelectable, 
         //    ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
         // }
 
-        if (mResetFlag[0x00] != 0x01) {
+        if (sResetFlag[0x00] != 0x01) {
             short cnt = FiraAppletContext.getChannelCnt();
             while ((--cnt) >= 0) {
                 FiraAppletContext.getContext(cnt).reset();
             }
-            mResetFlag[0] = 0x01;
+            sResetFlag[0] = 0x01;
         }
 
         // Applet is multi selectable, get the context of the logical channel used in
@@ -212,59 +212,59 @@ public class FiraApplet extends Applet implements AppletEvent, MultiSelectable, 
         switch (buf[ISO7816.OFFSET_INS]) {
 //    case FIRASpecs.INS_STORE_DATA:
         case FiraSpecs.INS_PROVISION_SD_CREDENTIALS:
-            len = processProvisionSDCredentials(buf, index, len, context, retValues);
+            len = processProvisionSDCredentials(buf, index, len, context, sRetValues);
             break;
         case FiraSpecs.INS_PROVISION_PA_CREDENTIALS:
-            len = processProcessPACredentials(buf, index, len, context, retValues);
+            len = processProcessPACredentials(buf, index, len, context, sRetValues);
             break;
         case FiraSpecs.INS_PROVISION_SERVICE_APPLET:
-            len = processProvisionServiceApplet(buf, index, len, context, retValues);
+            len = processProvisionServiceApplet(buf, index, len, context, sRetValues);
             break;
         case FiraSpecs.INS_CREATE_ADF:
-            len = processCreateAdfCmd(buf, index, len, context, retValues);
+            len = processCreateAdfCmd(buf, index, len, context, sRetValues);
             break;
         case FiraSpecs.INS_SELECT_ADF:
-            len = processSelectAdf(buf, index, len, context, retValues);
+            len = processSelectAdf(buf, index, len, context, sRetValues);
             break;
         case FiraSpecs.INS_MANAGE_ADF:
-            len = processManageADFCmd(buf, index, len, context, retValues);
+            len = processManageADFCmd(buf, index, len, context, sRetValues);
             break;
         case FiraSpecs.INS_DELETE_ADF:
-            len = processDeleteAdfCmd(buf, index, len, context, retValues);
+            len = processDeleteAdfCmd(buf, index, len, context, sRetValues);
             break;
         case FiraSpecs.INS_IMPORT_ADF:
-            len = processImportADFCmd(buf, index, len, context, retValues);
+            len = processImportADFCmd(buf, index, len, context, sRetValues);
             break;
         case FiraSpecs.INS_SWAP_ADF:
-            len = processSwapADFCmd(buf, index, len, context, retValues);
+            len = processSwapADFCmd(buf, index, len, context, sRetValues);
             break;
         case FiraSpecs.INS_INITIATE_TRANSACTION:
-            len = processInitTransaction(buf, index, len, context, retValues);
+            len = processInitTransaction(buf, index, len, context, sRetValues);
             break;
         case FiraSpecs.INS_DISPATCH:
-            len = processDispatchCmd(buf, index, len, context, retValues);
+            len = processDispatchCmd(buf, index, len, context, sRetValues);
             break;
         case FiraSpecs.INS_TUNNEL:
-            len = processTunnelCmd(buf, index, len, context, retValues);
+            len = processTunnelCmd(buf, index, len, context, sRetValues);
             break;
         case FiraSpecs.INS_GET_DATA:
             len = processGetDataCmd(
                     (short) (buf[ISO7816.OFFSET_P1] << 8 | (buf[ISO7816.OFFSET_P2] & 0x00FF)), buf,
-                    index, len, context, retValues);
+                    index, len, context, sRetValues);
             break;
         case FiraSpecs.INS_PUT_DATA:
-            len = processPutDataCmd(buf, index, len, context, retValues);
+            len = processPutDataCmd(buf, index, len, context, sRetValues);
             break;
         case FiraSpecs.INS_PERFORM_SECURITY_OPERATION:
         case FiraSpecs.INS_MUTUAL_AUTH:
-            len = processScp11cCmd(buf, index, len, context, retValues);
+            len = processScp11cCmd(buf, index, len, context, sRetValues);
             break;
 
         default:
             ISOException.throwIt(ISO7816.SW_INS_NOT_SUPPORTED);
             break;
         }
-        index = retValues[0];
+        index = sRetValues[0];
 
         if (len > 0) {
             // Send the response if any
@@ -701,34 +701,34 @@ public class FiraApplet extends Applet implements AppletEvent, MultiSelectable, 
     private short handleCustomGetCmd(byte[] buf, short inputStart, short inputLen,
             FiraAppletContext context) {
         // We only support Controlee Info, Session Data and Service Data.
-        short tagEnd = FiraUtil.getNextTag(buf, inputStart, inputLen, true, retValues);
+        short tagEnd = FiraUtil.getNextTag(buf, inputStart, inputLen, true, sRetValues);
 
-        if (tagEnd == FiraSpecs.INVALID_VALUE || retValues[1] != FiraSpecs.TAG_GET_CMD
-                || retValues[2] == 0) {
+        if (tagEnd == FiraSpecs.INVALID_VALUE || sRetValues[1] != FiraSpecs.TAG_GET_CMD
+                || sRetValues[2] == 0) {
             ISOException.throwIt(ISO7816.SW_WRONG_DATA);
         }
 
-        tagEnd = FiraUtil.getNextTag(buf, retValues[3], retValues[2], true, retValues);
+        tagEnd = FiraUtil.getNextTag(buf, sRetValues[3], sRetValues[2], true, sRetValues);
         if (tagEnd == FiraSpecs.INVALID_VALUE) {
             ISOException.throwIt(ISO7816.SW_WRONG_DATA);
         }
 
-        short tag = retValues[1];
+        short tag = sRetValues[1];
         // There is a special case in which the FIRA Fw can just request to get
         // Controlee Info from
         // Shared Adf part. In this case the slot will be the root slot.
         if (context.getSlot() == FiraRepository.ROOT_SLOT
-                && retValues[1] == FiraSpecs.TAG_UWB_CONTROLEE_INFO && retValues[2] == 0) {
-            byte[] mem = FiraRepository.getSharedAdfData(retValues[1], retValues);
-            tagEnd = FiraUtil.getTag(tag, mem, retValues[1], retValues[2], true, retValues);
+                && sRetValues[1] == FiraSpecs.TAG_UWB_CONTROLEE_INFO && sRetValues[2] == 0) {
+            byte[] mem = FiraRepository.getSharedAdfData(sRetValues[1], sRetValues);
+            tagEnd = FiraUtil.getTag(tag, mem, sRetValues[1], sRetValues[2], true, sRetValues);
             if (tagEnd == FiraSpecs.INVALID_VALUE) {
                 ISOException.throwIt(ISO7816.SW_RECORD_NOT_FOUND);
             }
-            inputLen = (short) (tagEnd - retValues[0]);
-            Util.arrayCopyNonAtomic(mem, retValues[0], buf, inputStart, inputLen);
+            inputLen = (short) (tagEnd - sRetValues[0]);
+            Util.arrayCopyNonAtomic(mem, sRetValues[0], buf, inputStart, inputLen);
         } else {
-            inputLen = handleGetCommand(tag, buf, retValues[3], retValues[2], context, retValues);
-            Util.arrayCopyNonAtomic(buf, retValues[0], buf, inputStart, inputLen);
+            inputLen = handleGetCommand(tag, buf, sRetValues[3], sRetValues[2], context, sRetValues);
+            Util.arrayCopyNonAtomic(buf, sRetValues[0], buf, inputStart, inputLen);
         }
 
         return inputLen;
@@ -736,17 +736,17 @@ public class FiraApplet extends Applet implements AppletEvent, MultiSelectable, 
 
     private short handleStandardLocalGetCmd(short tag, byte[] buf, short inputStart) {
         // Get the memory buffer from Applet data
-        byte[] mem = FiraRepository.getAppletData(tag, retValues);
+        byte[] mem = FiraRepository.getAppletData(tag, sRetValues);
 
         // Read tag
-        short end = FiraUtil.getTag(tag, mem, retValues[1], retValues[2], false, retValues);
+        short end = FiraUtil.getTag(tag, mem, sRetValues[1], sRetValues[2], false, sRetValues);
         if (end == FiraSpecs.INVALID_VALUE) {
             ISOException.throwIt(ISO7816.SW_RECORD_NOT_FOUND);
         }
 
-        short inputLen = (short) (end - retValues[0]);
+        short inputLen = (short) (end - sRetValues[0]);
         // copy that in to the apdu buffer
-        Util.arrayCopyNonAtomic(mem, retValues[0], buf, inputStart, inputLen);
+        Util.arrayCopyNonAtomic(mem, sRetValues[0], buf, inputStart, inputLen);
         return inputLen;
     }
 
@@ -754,8 +754,8 @@ public class FiraApplet extends Applet implements AppletEvent, MultiSelectable, 
         // Put data can have only one data object tag.
         short ret = 0;
 
-        FiraUtil.getNextTag(buf, index, len, true, retValues);
-        switch (retValues[1]) {
+        FiraUtil.getNextTag(buf, index, len, true, sRetValues);
+        switch (sRetValues[1]) {
         case FiraSpecs.TAG_TERMINATE_SESSION:
             terminateSession(context);
             break;
@@ -781,18 +781,18 @@ public class FiraApplet extends Applet implements AppletEvent, MultiSelectable, 
     private short getPutCmdRouteInfo(byte[] buf, short index, short len,
             FiraAppletContext context) {
         // Read the tag CMD ROUTING INFO and validate it
-        FiraUtil.getNextTag(buf, index, len, true, retValues);
-        short tagStart = retValues[3];
-        short tagLen = retValues[2];
+        FiraUtil.getNextTag(buf, index, len, true, sRetValues);
+        short tagStart = sRetValues[3];
+        short tagLen = sRetValues[2];
 
         assertOrderedStructure(buf, tagStart, tagLen, FiraSpecs.STRUCT_CMD_ROUTE_INFO, true, buf,
                 (short) (IMPL_APDU_BUFFER_MAX_SIZE - FiraSpecs.IMPL_SCRATCH_PAD_MAX_SIZE),
-                retValues);
+                sRetValues);
 
         // read the target and check whether it is HOST or Service Applet.
         // Read the target
-        FiraUtil.getNextTag(buf, tagStart, tagLen, false, retValues);
-        short routeTarget = buf[retValues[3]];
+        FiraUtil.getNextTag(buf, tagStart, tagLen, false, sRetValues);
+        short routeTarget = buf[sRetValues[3]];
 
         if (routeTarget != FiraSpecs.VAL_SERVICE_APPLET) {
             // TODO Currently, routing to application is not supported, but can be easily
@@ -810,71 +810,71 @@ public class FiraApplet extends Applet implements AppletEvent, MultiSelectable, 
     private short routeToServiceApplet(byte[] buf, short tagStart, short tagLen, byte[] outBuf,
             short outIndex, FiraAppletContext context) {
         // Check whether there is data amd it is not zero length
-        FiraUtil.getTag(FiraSpecs.TAG_CMD_ROUTING_DATA, buf, tagStart, tagLen, false, retValues);
+        FiraUtil.getTag(FiraSpecs.TAG_CMD_ROUTING_DATA, buf, tagStart, tagLen, false, sRetValues);
 
-        if (retValues[2] < 6) { // At least two tags with at least one byte of value must be present
+        if (sRetValues[2] < 6) { // At least two tags with at least one byte of value must be present
             ISOException.throwIt(ISO7816.SW_WRONG_DATA);
         }
 
-        short cmdIndex = retValues[3];
-        short cmdLen = retValues[2];
+        short cmdIndex = sRetValues[3];
+        short cmdLen = sRetValues[2];
         byte ref = context.getAppletRef();
         if (ref == FiraSpecs.INVALID_VALUE) {
             // First validate that CMD ROUTING INFO in the ADF defined service applet id tag
             // and
             // that matches the registered list of Service Applets
             byte[] mem = FiraRepository.getSlotSpecificAdfData(FiraSpecs.TAG_CMD_ROUTE_INFO,
-                    (byte) context.getSlot(), retValues);
-            short memIndex = retValues[1];
-            short memLen = retValues[2];
+                    (byte) context.getSlot(), sRetValues);
+            short memIndex = sRetValues[1];
+            short memLen = sRetValues[2];
             // Now search the APPLET ID Tag in CMD ROUTING INFO in ADF
             short tagEnd = FiraUtil.getTag(FiraSpecs.TAG_CMD_ROUTE_INFO, mem, memIndex, memLen,
-                    true, retValues);
+                    true, sRetValues);
 
             if (tagEnd == FiraSpecs.INVALID_VALUE) {
                 ISOException.throwIt(ISO7816.SW_RECORD_NOT_FOUND);
             }
-            tagStart = retValues[3];
-            tagLen = retValues[2];
+            tagStart = sRetValues[3];
+            tagLen = sRetValues[2];
             tagEnd = FiraUtil.getTag(FiraSpecs.TAG_SERVICE_APPLET_ID, mem, tagStart, tagLen, false,
-                    retValues);
+                    sRetValues);
 
             if (tagEnd == FiraSpecs.INVALID_VALUE) {
                 ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
             }
-            tagStart = retValues[3];
-            tagLen = retValues[2];
+            tagStart = sRetValues[3];
+            tagLen = sRetValues[2];
             // So the APPLET ID exists so check whether it is already registered.
             ref = getServiceApplet(mem, tagStart, (byte) tagLen);
-            if (ref == FiraSpecs.INVALID_VALUE || serviceApplet[ref].isReserved()) {
+            if (ref == FiraSpecs.INVALID_VALUE || sServiceApplet[ref].isReserved()) {
                 ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
             }
             // Get the OID
             mem = FiraRepository.getSlotSpecificAdfData(FiraSpecs.TAG_OID, (byte) context.getSlot(),
-                    retValues);
-            FiraUtil.getTag(FiraSpecs.TAG_OID, mem, retValues[1], retValues[2], true, retValues);
+                    sRetValues);
+            FiraUtil.getTag(FiraSpecs.TAG_OID, mem, sRetValues[1], sRetValues[2], true, sRetValues);
             // This is safe i.e. mem is passed in directly, because this will be passed to
             // shareable
             // interface this will copy the memory.
-            serviceApplet[ref].init(mem, retValues[3], retValues[2]);
+            sServiceApplet[ref].init(mem, sRetValues[3], sRetValues[2]);
             context.setAppletRef(ref);
         }
         // Applet is plugged in and so dispatch the command.
-        return serviceApplet[ref].dispatch(buf, cmdIndex, cmdLen, outBuf, outIndex);
+        return sServiceApplet[ref].dispatch(buf, cmdIndex, cmdLen, outBuf, outIndex);
     }
 
     private void putControleeInfo(byte[] buf, short index, short len, FiraAppletContext context) {
-        short tag = FiraUtil.getNextTag(buf, index, len, true, retValues);
+        short tag = FiraUtil.getNextTag(buf, index, len, true, sRetValues);
 
-        tag = FiraUtil.getTag(FiraSpecs.TAG_UWB_CAPABILITY, buf, retValues[3], retValues[2], false,
-                retValues);
+        tag = FiraUtil.getTag(FiraSpecs.TAG_UWB_CAPABILITY, buf, sRetValues[3], sRetValues[2], false,
+                sRetValues);
         // UWB Capability can only be set in root context.
         if (tag != FiraSpecs.INVALID_VALUE && !context.isRoot()) {
             ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
         }
 
-        tag = FiraUtil.getTag(FiraSpecs.TAG_UWB_REGULATORY_INFO, buf, retValues[3], retValues[2],
-                false, retValues);
+        tag = FiraUtil.getTag(FiraSpecs.TAG_UWB_REGULATORY_INFO, buf, sRetValues[3], sRetValues[2],
+                false, sRetValues);
         // UWB Regular info can only be set in root context.
         if (tag != FiraSpecs.INVALID_VALUE) {
             ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
@@ -921,9 +921,9 @@ public class FiraApplet extends Applet implements AppletEvent, MultiSelectable, 
 
     private void generateAndSendRDS(byte[] buf, short index, short len, FiraAppletContext context) {
         byte[] mem = FiraRepository.getSlotSpecificAdfData(FiraSpecs.TAG_UWB_SESSION_DATA,
-                (byte) context.getSlot(), retValues);
-        short end = FiraUtil.getTag(FiraSpecs.TAG_UWB_SESSION_DATA, mem, retValues[1], retValues[2],
-                true, retValues);
+                (byte) context.getSlot(), sRetValues);
+        short end = FiraUtil.getTag(FiraSpecs.TAG_UWB_SESSION_DATA, mem, sRetValues[1], sRetValues[2],
+                true, sRetValues);
 
         if (end == FiraSpecs.INVALID_VALUE) {
             return;
@@ -931,18 +931,18 @@ public class FiraApplet extends Applet implements AppletEvent, MultiSelectable, 
 
         // TAG_UWB_SESSION_DATA is a constructed tag so start next search in 'mem' with
         // TLV value
-        short valueLen = retValues[2];
-        short valueIndex = retValues[3];
+        short valueLen = sRetValues[2];
+        short valueIndex = sRetValues[3];
 
-        end = FiraUtil.getTag(FiraSpecs.TAG_UWB_SESSION_ID, mem, retValues[3], valueLen, true,
-                retValues);
+        end = FiraUtil.getTag(FiraSpecs.TAG_UWB_SESSION_ID, mem, sRetValues[3], valueLen, true,
+                sRetValues);
         if (end == FiraSpecs.INVALID_VALUE) {
             return;
         }
 
-        short sessionIdOffset = retValues[3];
+        short sessionIdOffset = sRetValues[3];
         short configAvailable = FiraUtil.getTag(FiraSpecs.TAG_UWB_CONFIG_AVAILABLE, mem, end,
-                (short) (valueLen - (end - valueIndex)), true, retValues);
+                (short) (valueLen - (end - valueIndex)), true, sRetValues);
         if (configAvailable == FiraSpecs.INVALID_VALUE
                 && (!context.isAutoTerminate() && context.isDefaultKeyGeneration())) {
             return;
@@ -1144,14 +1144,14 @@ public class FiraApplet extends Applet implements AppletEvent, MultiSelectable, 
     private short pushAdfTag(byte[] buf, short index, byte[] mem, short start, short len,
             short tag) {
         // Get the data from adf
-        short dataEnd = FiraUtil.getTag(tag, mem, start, len, true, retValues);
+        short dataEnd = FiraUtil.getTag(tag, mem, start, len, true, sRetValues);
 
         // If it is not present then just return current index
         if (dataEnd == FiraSpecs.INVALID_VALUE) {
             return index;
         }
         // Else push the data from adf in the buf and return the new index
-        return FiraUtil.pushBERTlv(buf, index, tag, mem, retValues[3], retValues[2]);
+        return FiraUtil.pushBERTlv(buf, index, tag, mem, sRetValues[3], sRetValues[2]);
     }
 
     private short processImportADFCmd(byte[] buf, short inputStart, short inputLen,
@@ -1179,8 +1179,8 @@ public class FiraApplet extends Applet implements AppletEvent, MultiSelectable, 
         // Padding may add upto one block of padding bytes (16 bytes)
         // IF not then use the cache buf.
         if ((short) (buf.length - outStart) < inputLen) {
-            if (isDataCacheFree() && (short) (dataCache.length) >= (short) (inputLen + 16)) {
-                outBuf = dataCache;
+            if (isDataCacheFree() && (short) (sDataCache.length) >= (short) (inputLen + 16)) {
+                outBuf = sDataCache;
                 outStart = (short) 0;
             } else { // else return error
                 ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
@@ -1222,8 +1222,8 @@ public class FiraApplet extends Applet implements AppletEvent, MultiSelectable, 
                 // Use data cache if it is free and the apdu buffer is not having enough space
                 if (secureBlobLen < (short) (buf.length - inputLen)) {
                     secureBlobLen = decryptAdf(buf, secureBlobStart, buf, inputEnd, secureBlobLen);
-                } else if (!flags[DATA_CACHE_IN_USE] && secureBlobLen < dataCache.length) {
-                    secureBlobLen = decryptAdf(buf, secureBlobStart, dataCache, (short) 0,
+                } else if (!sFlags[DATA_CACHE_IN_USE] && secureBlobLen < sDataCache.length) {
+                    secureBlobLen = decryptAdf(buf, secureBlobStart, sDataCache, (short) 0,
                             secureBlobLen);
                     resetDataCache();
                 } else {
@@ -1267,7 +1267,7 @@ public class FiraApplet extends Applet implements AppletEvent, MultiSelectable, 
     private short encryptAdf(byte[] buf, short inputStart, byte[] outBuf, short outStart,
             short inputLen) {
         Cipher cipher = Cipher.getInstance(Cipher.ALG_AES_BLOCK_128_ECB_NOPAD, false);
-        cipher.init(masterKey, Cipher.MODE_ENCRYPT);
+        cipher.init(sMasterKey, Cipher.MODE_ENCRYPT);
 
         // PKCS7 padding
         byte paddingBytes = (byte) (inputLen % 16);
@@ -1289,7 +1289,7 @@ public class FiraApplet extends Applet implements AppletEvent, MultiSelectable, 
     private short decryptAdf(byte[] buf, short inputStart, byte[] outBuf, short outStart,
             short inputLen) {
         Cipher cipher = Cipher.getInstance(Cipher.ALG_AES_BLOCK_128_ECB_NOPAD, false);
-        cipher.init(masterKey, Cipher.MODE_DECRYPT);
+        cipher.init(sMasterKey, Cipher.MODE_DECRYPT);
         inputLen = cipher.doFinal(buf, inputStart, inputLen, outBuf, outStart);
         // remove padding
         inputLen -= outBuf[(short) (outStart + inputLen - 1)];
@@ -1374,13 +1374,12 @@ public class FiraApplet extends Applet implements AppletEvent, MultiSelectable, 
         context.setRemoteSecureState(FiraAppletContext.REMOTE_UNSECURE);
 
         if (context.getAppletRef() != FiraSpecs.INVALID_VALUE
-                && serviceApplet[context.getAppletRef()].isReserved()) {
-            serviceApplet[context.getAppletRef()].cleanUp();
+                && sServiceApplet[context.getAppletRef()].isReserved()) {
+            sServiceApplet[context.getAppletRef()].cleanUp();
             context.setAppletRef(FiraSpecs.INVALID_VALUE);
         }
-        // TODO uncomment the following for JCOP version
-        // Release the references
-        // JCSystem.requestObjectDeletion();
+        // uncomment the following for JCOP version Release the references
+        JCSystem.requestObjectDeletion();
     }
 
     // -------------------------------- Establish local Scp11c Secure channel Apdu
@@ -1472,7 +1471,7 @@ public class FiraApplet extends Applet implements AppletEvent, MultiSelectable, 
             // reserve the data cache.
             if (cache == null) {
                 reserveDataCache();
-                context.associateDataCache(dataCache);
+                context.associateDataCache(sDataCache);
             }
             // copy the data in the cache and return
             addToCache(buf, inputStart, inputLen);
@@ -1550,7 +1549,6 @@ public class FiraApplet extends Applet implements AppletEvent, MultiSelectable, 
         return 0;
     }
 
-    // TODO can we reuse the method in FiraSC?
     private short processSelectAdf(byte[] buf, short inputStart, short inputLen,
             FiraAppletContext context, short[] retValues) {
         // There should not be already selected slot or if at all it should be root
@@ -1590,18 +1588,18 @@ public class FiraApplet extends Applet implements AppletEvent, MultiSelectable, 
 
     private short makeSelectResponse(byte[] buf, short oidStart, short oidEnd, short randStart,
             short randEnd, short index) {
-        byte[] mem = FiraRepository.getAppletData(FiraSpecs.TAG_DEVICE_UID, retValues);
+        byte[] mem = FiraRepository.getAppletData(FiraSpecs.TAG_DEVICE_UID, sRetValues);
 
         if (mem == null) {
             ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
         }
-        short deviceUidEnd = FiraUtil.getTag(FiraSpecs.TAG_DEVICE_UID, mem, retValues[1],
-                retValues[2], true, retValues);
+        short deviceUidEnd = FiraUtil.getTag(FiraSpecs.TAG_DEVICE_UID, mem, sRetValues[1],
+                sRetValues[2], true, sRetValues);
         if (deviceUidEnd == FiraSpecs.INVALID_VALUE) {
             ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
         }
-        short deviceUidStart = retValues[3];
-        short deviceUidLen = retValues[2];
+        short deviceUidStart = sRetValues[3];
+        short deviceUidLen = sRetValues[2];
         short oidLen = (short) (oidEnd - oidStart);
         short randLen = (short) (randEnd - randStart);
         index = Util.arrayCopyNonAtomic(FiraSpecs.SELECT_ADF_ALGORITHM_INFO, (short) 0, buf, index,
@@ -1669,17 +1667,17 @@ public class FiraApplet extends Applet implements AppletEvent, MultiSelectable, 
     private void addPACredentials(byte[] buf, short inputStart, short inputLen) {
         assertOrderedStructure(buf, inputStart, inputLen, FiraSpecs.DATA_PA_RECORD, true, buf,
                 (short) (IMPL_APDU_BUFFER_MAX_SIZE - FiraSpecs.IMPL_SCRATCH_PAD_MAX_SIZE),
-                retValues);
+                sRetValues);
         // Read the tag to add
-        short valEnd = FiraUtil.getNextTag(buf, inputStart, inputLen, true, retValues);
-        short valStart = retValues[0];
-        byte[] mem = FiraRepository.getSharedAdfData(FiraSpecs.TAG_PA_RECORD, retValues);
-        short memStart = retValues[1];
-        short memLen = retValues[2];
+        short valEnd = FiraUtil.getNextTag(buf, inputStart, inputLen, true, sRetValues);
+        short valStart = sRetValues[0];
+        byte[] mem = FiraRepository.getSharedAdfData(FiraSpecs.TAG_PA_RECORD, sRetValues);
+        short memStart = sRetValues[1];
+        short memLen = sRetValues[2];
 
         // search the records.
         short recordEnd = FiraUtil.search(FiraSpecs.TAG_PA_RECORD, FiraSpecs.TAG_PA_CRED_PA_ID, buf,
-                valStart, (short) (valEnd - valStart), mem, memStart, memLen, retValues);
+                valStart, (short) (valEnd - valStart), mem, memStart, memLen, sRetValues);
         // error if the record exists
         if (recordEnd != FiraSpecs.INVALID_VALUE) {
             ISOException.throwIt(ISO7816.SW_WRONG_DATA);
@@ -1696,19 +1694,19 @@ public class FiraApplet extends Applet implements AppletEvent, MultiSelectable, 
 
     private void removePACredentials(byte[] buf, short inputStart, short inputLen) {
         // Get the PA Record file.
-        byte[] mem = FiraRepository.getSharedAdfData(FiraSpecs.TAG_PA_RECORD, retValues);
-        short memMaxLen = retValues[0];
-        short memStart = retValues[1];
-        short memLen = retValues[2];
+        byte[] mem = FiraRepository.getSharedAdfData(FiraSpecs.TAG_PA_RECORD, sRetValues);
+        short memMaxLen = sRetValues[0];
+        short memStart = sRetValues[1];
+        short memLen = sRetValues[2];
 
         // search the records for given PA Identifier
         short recordEnd = FiraUtil.search(FiraSpecs.TAG_PA_RECORD, FiraSpecs.TAG_PA_CRED_PA_ID, buf,
-                inputStart, inputLen, mem, memStart, memLen, retValues);
+                inputStart, inputLen, mem, memStart, memLen, sRetValues);
         // erase the record if it exists
         if (recordEnd != FiraSpecs.INVALID_VALUE) {
             JCSystem.beginTransaction();
             FiraRepository.perform(FiraRepository.DELETE, mem, memStart, memLen, memMaxLen,
-                    retValues[0], (short) (recordEnd - retValues[0]), null, (short) 0, (short) 0);
+                    sRetValues[0], (short) (recordEnd - sRetValues[0]), null, (short) 0, (short) 0);
             JCSystem.commitTransaction();
         }
     }
@@ -1735,8 +1733,8 @@ public class FiraApplet extends Applet implements AppletEvent, MultiSelectable, 
         if (index == FiraSpecs.INVALID_VALUE) {
             ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
         }
-        serviceApplet[index].delete();
-        serviceApplet[index] = null;
+        sServiceApplet[index].delete();
+        sServiceApplet[index] = null;
         JCSystem.requestObjectDeletion();
     }
 
@@ -1745,11 +1743,11 @@ public class FiraApplet extends Applet implements AppletEvent, MultiSelectable, 
             ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
         }
 
-        byte len = (byte) serviceApplet.length;
+        byte len = (byte) sServiceApplet.length;
         byte index = 0;
         while (index < len) {
-            if (serviceApplet[index] == null) {
-                serviceApplet[index] = new FiraServiceAppletHandler(buf, inputStart,
+            if (sServiceApplet[index] == null) {
+                sServiceApplet[index] = new FiraServiceAppletHandler(buf, inputStart,
                         (byte) inputLen);
                 return;
             }
@@ -1759,12 +1757,12 @@ public class FiraApplet extends Applet implements AppletEvent, MultiSelectable, 
     }
 
     private byte getServiceApplet(byte[] buf, short inputStart, byte inputLen) {
-        byte len = (byte) serviceApplet.length;
+        byte len = (byte) sServiceApplet.length;
         byte index = 0;
 
         while (index < len) {
-            if (serviceApplet[index] != null
-                    && serviceApplet[index].isAppletIdEquals(buf, inputStart, inputLen)) {
+            if (sServiceApplet[index] != null
+                    && sServiceApplet[index].isAppletIdEquals(buf, inputStart, inputLen)) {
                 return index;
             }
             index++;

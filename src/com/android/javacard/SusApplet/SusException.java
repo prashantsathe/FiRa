@@ -20,16 +20,16 @@ import javacard.framework.JCSystem;
 
 public class SusException extends RuntimeException {
 
-    public short[] reason;
+    public short[] mReason;
     public static SusException exception;
 
     private SusException() {
-        reason = JCSystem.makeTransientShortArray((short) 1, JCSystem.CLEAR_ON_RESET);
+        mReason = JCSystem.makeTransientShortArray((short) 1, JCSystem.CLEAR_ON_RESET);
     }
 
     public static void throwIt(short reason) {
         instance();
-        exception.reason[(short) 0] = reason;
+        exception.mReason[(short) 0] = reason;
         throw exception;
     }
 
@@ -41,10 +41,10 @@ public class SusException extends RuntimeException {
     }
 
     public void clear() {
-        exception.reason[(short) 0] = 1000; // Unknown code
+        exception.mReason[(short) 0] = 1000; // Unknown code
     }
 
     public static short getReason() {
-        return exception.reason[0];
+        return exception.mReason[0];
     }
 }

@@ -30,7 +30,7 @@ public class FiraContext {
     // 'O_*' -> offset of the fields present in 'mBuf'
     public static final short O_SELECTED_OID = 0;
     public static final short O_SELECTED_OID_LEN = (short) (O_SELECTED_OID + MAX_OID_SIZE);
-    // TODO: add variable length
+    // Add variable length
     public static final short O_DEVICE_IDENTIFIER = (short) (O_SELECTED_OID_LEN + 1);
     public static final short O_KEY_PRI_ENC = (short) (O_DEVICE_IDENTIFIER + DEVICE_IDENTIFIER_SIZE); // TBD
     public static final short O_KEY_PUB_ENC = (short) (O_KEY_PRI_ENC + EC_SK_KEY_LENGTH); // TBD
@@ -43,7 +43,7 @@ public class FiraContext {
     public static final short O_EPHEMERAL_PUBKEY2 = (short) (O_EPHEMERAL_PUBKEY1 + EC_PK_KEY_LENGTH);
     public static final short O_EPHEMERAL_PRIKEY1 = (short) (O_EPHEMERAL_PUBKEY2 + EC_PK_KEY_LENGTH);
     public static final short O_EPHEMERAL_PRIKEY2 = (short) (O_EPHEMERAL_PRIKEY1 + EC_SK_KEY_LENGTH);
-    // is 'RandomData2', just following CSML convention
+    // RANDOM_DATA0 is 'RandomData2', just following CSML convention
     public static final short O_RANDOM_DATA0 = (short) (O_EPHEMERAL_PRIKEY2 + EC_SK_KEY_LENGTH);
     public static final short O_RANDOM_DATA1 = (short) (O_RANDOM_DATA0 + BlOCK_16BYTES);
     public static final short O_RANDOM_IV = (short) (O_RANDOM_DATA1 + BlOCK_16BYTES);

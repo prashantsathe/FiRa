@@ -31,31 +31,31 @@ import javacard.framework.Util;
 
 public class SusRdsSlot {
 
-    private static Object[] mBerTlvParser;
-    private static BerTlvBuilder mBerTlvBuilder;
-    private static byte[] mRdsInfo;
-    private static byte[] mRdsInfoInPersistent;
+    private static Object[] sBerTlvParser;
+    private static BerTlvBuilder sBerTlvBuilder;
+    private static byte[] sRdsInfo;
+    private static byte[] sRdsInfoInPersistent;
 
     public SusRdsSlot() {
-        mBerTlvParser = new Object[MAX_RDS_COUNT];
+        sBerTlvParser = new Object[MAX_RDS_COUNT];
 
         for (short i = 0; i < MAX_RDS_COUNT; i++)
-            mBerTlvParser[i] = new BerTlvParser();
+            sBerTlvParser[i] = new BerTlvParser();
 
-        mBerTlvBuilder = new BerTlvBuilder();
-        mRdsInfo = JCSystem.makeTransientByteArray((short) (MAX_RDS_COUNT * STORAGE_RDS_SIZE),
+        sBerTlvBuilder = new BerTlvBuilder();
+        sRdsInfo = JCSystem.makeTransientByteArray((short) (MAX_RDS_COUNT * STORAGE_RDS_SIZE),
                 JCSystem.CLEAR_ON_RESET);
 
         // if persistent storage is configured
         if (STORE_RDS_PERSISTENT_FLAG) {
-            mRdsInfoInPersistent = new byte[STORAGE_RDS_SIZE * MAX_RDS_COUNT];
+            sRdsInfoInPersistent = new byte[STORAGE_RDS_SIZE * MAX_RDS_COUNT];
         }
     }
 
     public short parseAndVerifyRangingDataSet(short slotId, byte[] inputData, short offset,
             short length) {
         // Parse input data to BER library
-        ((BerTlvParser) mBerTlvParser[slotId]).parse(inputData, offset, length);
+        ((BerTlvParser) sBerTlvParser[slotId]).parse(inputData, offset, length);
         // verify Ranging data set
         return verifyRangingDataSet(slotId, inputData, offset, length);
     }
@@ -78,7 +78,7 @@ public class SusRdsSlot {
 
         short offset = 0;
         {
-            mBerTlvBuilder.startCOTag(offset);
+            sBerTlvBuilder.startCOTag(offset);
             {
                 // Assuming AID is not more than 64 bytes
                 // To avoid the use of another array, use response data's last 128 bytes,
@@ -91,9 +91,9 @@ public class SusRdsSlot {
                         S_SUS_APPLET_AID, (short) 0, (short) S_SUS_APPLET_AID.length, reponseBuffer,
                         (short) (responseBufferLength - 128), aidLength);
 
-                mBerTlvBuilder.startCOTag(offset);
+                sBerTlvBuilder.startCOTag(offset);
                 {
-                    mBerTlvBuilder.startCOTag(offset);
+                    sBerTlvBuilder.startCOTag(offset);
                     {
                         offset = BerTlvBuilder.addTlv(reponseBuffer,
                                 (short) (reponseBufferOffset + offset), responseBufferLength,
@@ -107,11 +107,11 @@ public class SusRdsSlot {
                                 S_APPLET_OPTIONS_INFO, (short) 0,
                                 (short) S_APPLET_OPTIONS_INFO.length);
                     }
-                    offset = mBerTlvBuilder.endCOTag(reponseBuffer, S_BFOC, offset);
+                    offset = sBerTlvBuilder.endCOTag(reponseBuffer, S_BFOC, offset);
                 }
-                offset = mBerTlvBuilder.endCOTag(reponseBuffer, S_A5, offset);
+                offset = sBerTlvBuilder.endCOTag(reponseBuffer, S_A5, offset);
             }
-            offset = mBerTlvBuilder.endCOTag(reponseBuffer, S_RESPONSE_TEMPLATE, offset);
+            offset = sBerTlvBuilder.endCOTag(reponseBuffer, S_RESPONSE_TEMPLATE, offset);
         }
 
         return offset;
@@ -144,7 +144,7 @@ public class SusRdsSlot {
 
         boolean uwbSessionKeyPresent = false, uwbSessionIdPresent = false;
         short retUwbSessionOffset = 0, rdsInfoOffset = (short) (slotId * STORAGE_RDS_SIZE);
-        BerArrayLinkList bLinkList = ((BerTlvParser) mBerTlvParser[slotId]).getBerArrayLinkList();
+        BerArrayLinkList bLinkList = ((BerTlvParser) sBerTlvParser[slotId]).getBerArrayLinkList();
         short ptrOffset = bLinkList.getFirstTLVInstance();
 
         while (ptrOffset != -1) {
@@ -157,11 +157,11 @@ public class SusRdsSlot {
                 uwbSessionIdPresent = true;
                 // Storing the sessionid offset here itself to avoid another loop
                 retUwbSessionOffset = bLinkList.getValueOffset(ptrOffset);
-                Util.setShort(mRdsInfo, (short) (rdsInfoOffset + O_UWB_SESSION_ID),
+                Util.setShort(sRdsInfo, (short) (rdsInfoOffset + O_UWB_SESSION_ID),
                         retUwbSessionOffset);
             } else if (rds[tagOffset] == KEY_EXCHANGE_KEY_ID) {
                 // Storing the keyexchangeKeyid offset here itself to avoid another loop
-                Util.setShort(mRdsInfo, (short) (rdsInfoOffset + O_KEY_EXCHANGE_ID),
+                Util.setShort(sRdsInfo, (short) (rdsInfoOffset + O_KEY_EXCHANGE_ID),
                         bLinkList.getValueOffset(ptrOffset));
             } else if ((rds[tagOffset] < 0xC0 && rds[tagOffset] > 0xD1)
                     || (rds[tagOffset] < 0xF0 && rds[tagOffset] > 0xF7)) {
@@ -207,17 +207,17 @@ public class SusRdsSlot {
     }
 
     private void resetRdsInfo(short slotId) {
-        Util.arrayFillNonAtomic(mRdsInfo, (short) (slotId * STORAGE_RDS_SIZE), STORAGE_RDS_SIZE,
+        Util.arrayFillNonAtomic(sRdsInfo, (short) (slotId * STORAGE_RDS_SIZE), STORAGE_RDS_SIZE,
                 (byte) 0x00);
 
         if (STORE_RDS_PERSISTENT_FLAG)
-            Util.arrayFill(mRdsInfoInPersistent, (short) (slotId * STORAGE_RDS_SIZE),
+            Util.arrayFill(sRdsInfoInPersistent, (short) (slotId * STORAGE_RDS_SIZE),
                     STORAGE_RDS_SIZE, (byte) 0x00);
     }
 
     private boolean compareKeyExchangeAppAid(short slotId, byte[] inBuffer,
             short keyExchangeAppAidOffset, short keyExchangeAppAidLength) {
-        return 0 == Util.arrayCompare(inBuffer, keyExchangeAppAidOffset, mRdsInfo,
+        return 0 == Util.arrayCompare(inBuffer, keyExchangeAppAidOffset, sRdsInfo,
                 (short) ((slotId * STORAGE_RDS_SIZE) + O_KEY_EXCHANGE_APP_ID),
                 keyExchangeAppAidLength);
     }
@@ -225,20 +225,20 @@ public class SusRdsSlot {
     private boolean compareKeyExchangeKeyId(short slotId, byte[] inBuffer,
             short keyExchangeKeyIdOffset, short keyExchangeKeyIdLength) {
         short offsetmRds = (short) (slotId * STORAGE_RDS_SIZE);
-        short keyExchangeKeyIDOffset = (short) (Util.getShort(mRdsInfo,
+        short keyExchangeKeyIDOffset = (short) (Util.getShort(sRdsInfo,
                 (short) (offsetmRds + O_KEY_EXCHANGE_ID)) + O_RDS);
 
-        return 0 == Util.arrayCompare(inBuffer, keyExchangeKeyIdOffset, mRdsInfo,
+        return 0 == Util.arrayCompare(inBuffer, keyExchangeKeyIdOffset, sRdsInfo,
                 (short) (offsetmRds + keyExchangeKeyIDOffset), keyExchangeKeyIdLength);
     }
 
     private boolean compareUwbSessionId(short slotId, byte[] inBuffer, short offset) {
         short offsetmRds = (short) (slotId * STORAGE_RDS_SIZE);
-        short uwbSessionIdOffset = (short) (Util.getShort(mRdsInfo,
+        short uwbSessionIdOffset = (short) (Util.getShort(sRdsInfo,
                 (short) (offsetmRds + O_UWB_SESSION_ID)) + O_RDS);
 
         // UWB session ID size is fixed, 4 bytes.
-        return 0 == Util.arrayCompare(inBuffer, offset, mRdsInfo,
+        return 0 == Util.arrayCompare(inBuffer, offset, sRdsInfo,
                 (short) (offsetmRds + uwbSessionIdOffset), (short) 4);
     }
 
@@ -265,7 +265,7 @@ public class SusRdsSlot {
     private short copyRdsInformation(short slotId, byte[] outBuffer, short outBufferOffset,
             byte p1) {
 
-        BerArrayLinkList bLinkList = ((BerTlvParser) mBerTlvParser[slotId]).getBerArrayLinkList();
+        BerArrayLinkList bLinkList = ((BerTlvParser) sBerTlvParser[slotId]).getBerArrayLinkList();
         short ptrOffsetStart = bLinkList.getFirstTLVInstance();
         short ptrOffsetEnd, copiedLength = 0, tagOffset;
         byte finalRdsRangeByte = (byte) (p1 == 0x01 ? SEC_PRIVACY_KEY : UWB_SESSION_ID);
@@ -276,18 +276,18 @@ public class SusRdsSlot {
             ptrOffsetEnd = bLinkList.getNextTag(ptrOffsetStart);
             tagOffset = (short) (bLinkList.getTagOffset(ptrOffsetStart) + offsetmRds + O_RDS);
 
-            if (mRdsInfo[tagOffset] >= RANGING_SESSION_KEY
-                    && mRdsInfo[tagOffset] <= finalRdsRangeByte) {
+            if (sRdsInfo[tagOffset] >= RANGING_SESSION_KEY
+                    && sRdsInfo[tagOffset] <= finalRdsRangeByte) {
                 short destOffset = (short) (outBufferOffset + copiedLength);
 
                 if (ptrOffsetEnd != -1) {
-                    copiedLength += (Util.arrayCopyNonAtomic(mRdsInfo, tagOffset, outBuffer,
+                    copiedLength += (Util.arrayCopyNonAtomic(sRdsInfo, tagOffset, outBuffer,
                             destOffset, (short) ((bLinkList.getTagOffset(ptrOffsetEnd) + offsetmRds
                                     + O_RDS) - tagOffset)) - destOffset);
                 } else {
                     short lastTagLength = bLinkList.getTotalTlvLength(ptrOffsetStart);
 
-                    copiedLength += (Util.arrayCopyNonAtomic(mRdsInfo, tagOffset, outBuffer,
+                    copiedLength += (Util.arrayCopyNonAtomic(sRdsInfo, tagOffset, outBuffer,
                             destOffset, lastTagLength) - destOffset);
                 }
             }
@@ -305,8 +305,8 @@ public class SusRdsSlot {
     public void storeRangingDataSetInPersistent(short slotId) {
         short offsetmRds = (short) (slotId * STORAGE_RDS_SIZE);
 
-        if (mRdsInfoInPersistent != null) {
-            Util.arrayCopy(mRdsInfo, offsetmRds, mRdsInfoInPersistent, offsetmRds,
+        if (sRdsInfoInPersistent != null) {
+            Util.arrayCopy(sRdsInfo, offsetmRds, sRdsInfoInPersistent, offsetmRds,
                     STORAGE_RDS_SIZE);
         }
     }
@@ -315,16 +315,16 @@ public class SusRdsSlot {
 
         short offsetmRds = (short) (slotId * STORAGE_RDS_SIZE);
         // Copy RDS data
-        Util.arrayCopy(rds, rdsOffset, mRdsInfo, (short) (offsetmRds + O_RDS), rdsLength);
-        Util.setShort(mRdsInfo, (short) (offsetmRds + O_RDS_LENGTH), rdsLength);
+        Util.arrayCopy(rds, rdsOffset, sRdsInfo, (short) (offsetmRds + O_RDS), rdsLength);
+        Util.setShort(sRdsInfo, (short) (offsetmRds + O_RDS_LENGTH), rdsLength);
 
         // Copy Key exchange App id & size
-        short appIdLength = JCSystem.getPreviousContextAID().getBytes(mRdsInfo,
+        short appIdLength = JCSystem.getPreviousContextAID().getBytes(sRdsInfo,
                 (short) (offsetmRds + O_KEY_EXCHANGE_APP_ID));
-        Util.setShort(mRdsInfo, (short) (offsetmRds + O_KEY_EXCHANGE_APP_ID_SIZE), appIdLength);
+        Util.setShort(sRdsInfo, (short) (offsetmRds + O_KEY_EXCHANGE_APP_ID_SIZE), appIdLength);
 
         // set 'occupied'
-        mRdsInfo[(short) (offsetmRds + O_OCCUPIED)] = 0x01;
+        sRdsInfo[(short) (offsetmRds + O_OCCUPIED)] = 0x01;
     }
 
     public void setRdsInfoInTransient() {
@@ -333,14 +333,14 @@ public class SusRdsSlot {
 
         for (short slotId = 0; slotId < MAX_RDS_COUNT; slotId++) {
 
-            if (mRdsInfoInPersistent[(short) ((slotId * STORAGE_RDS_SIZE) + O_OCCUPIED)] == 0x01) {
+            if (sRdsInfoInPersistent[(short) ((slotId * STORAGE_RDS_SIZE) + O_OCCUPIED)] == 0x01) {
                 offsetmRds = (short) (slotId * STORAGE_RDS_SIZE);
-                Util.arrayCopyNonAtomic(mRdsInfoInPersistent, (short) offsetmRds, mRdsInfo,
+                Util.arrayCopyNonAtomic(sRdsInfoInPersistent, (short) offsetmRds, sRdsInfo,
                         (short) offsetmRds, STORAGE_RDS_SIZE);
                 // parse the RDS to ber
-                ((BerTlvParser) mBerTlvParser[slotId]).parse(mRdsInfo,
+                ((BerTlvParser) sBerTlvParser[slotId]).parse(sRdsInfo,
                         (short) (offsetmRds + O_RDS),
-                        Util.getShort(mRdsInfo, (short) (offsetmRds + O_RDS_LENGTH)));
+                        Util.getShort(sRdsInfo, (short) (offsetmRds + O_RDS_LENGTH)));
             }
         }
     }
@@ -352,7 +352,7 @@ public class SusRdsSlot {
         if (inLength == 0) {
 
             for (short id = 0; id < MAX_RDS_COUNT; id++)
-                if (mRdsInfo[(short) ((id * STORAGE_RDS_SIZE) + O_OCCUPIED)] == 0x01) // isSlotOccupied
+                if (sRdsInfo[(short) ((id * STORAGE_RDS_SIZE) + O_OCCUPIED)] == 0x01) // isSlotOccupied
                     resetRdsInfo(id);
 
         } else if (inBuffer[inOffset] == KEY_EXCHANGE_KEY_ID
@@ -371,7 +371,7 @@ public class SusRdsSlot {
             short valueOffset = (short) (1 + getLengthFieldLength(valueLength) + inOffset);
 
             for (short id = 0; id < MAX_RDS_COUNT; id++) {
-                if (mRdsInfo[(short) ((id * STORAGE_RDS_SIZE) + O_OCCUPIED)] == 0x01 // isSlotOccupied
+                if (sRdsInfo[(short) ((id * STORAGE_RDS_SIZE) + O_OCCUPIED)] == 0x01 // isSlotOccupied
                         && ((inBuffer[inOffset] == KEY_EXCHANGE_KEY_ID
                                 ? compareKeyExchangeKeyId(id, inBuffer, valueOffset, valueLength)
                                 : compareUwbSessionId(id, inBuffer, valueOffset))
@@ -388,7 +388,7 @@ public class SusRdsSlot {
 
         for (id = 0; id < MAX_RDS_COUNT; id++) {
             // Check for Free slot
-            if (mRdsInfo[(short) ((id * STORAGE_RDS_SIZE) + O_OCCUPIED)] == 0x00)
+            if (sRdsInfo[(short) ((id * STORAGE_RDS_SIZE) + O_OCCUPIED)] == 0x00)
                 break;
         }
 
@@ -401,7 +401,7 @@ public class SusRdsSlot {
     public static boolean checkAnyActiveSession() {
 
         for (short id = 0; id < MAX_RDS_COUNT; id++) {
-            if (mRdsInfo[(short) ((id * STORAGE_RDS_SIZE) + O_OCCUPIED)] == 0x01)
+            if (sRdsInfo[(short) ((id * STORAGE_RDS_SIZE) + O_OCCUPIED)] == 0x01)
                 return true;
         }
 
@@ -412,7 +412,7 @@ public class SusRdsSlot {
 
         for (short id = 0; id < MAX_RDS_COUNT; id++) {
             if (id != slotException
-                    && mRdsInfo[(short) ((id * STORAGE_RDS_SIZE) + O_OCCUPIED)] // is Slot Occupied
+                    && sRdsInfo[(short) ((id * STORAGE_RDS_SIZE) + O_OCCUPIED)] // is Slot Occupied
                             == 0x01 && compareUwbSessionId(id, rds, uwbSessionIdOffset)) {
                 ISOException.throwIt(SecureUwbService.ERROR_DUPLICATE_SESSION_ID);
             }
@@ -422,7 +422,7 @@ public class SusRdsSlot {
     public void deleteRdsOnUwbSessionId(byte[] rds, short uwbSessionIdOffset) {
 
         for (short slotId = 0; slotId < MAX_RDS_COUNT; slotId++) {
-            if (mRdsInfo[(short) ((slotId * STORAGE_RDS_SIZE) + O_OCCUPIED)] // is Slot Occupied
+            if (sRdsInfo[(short) ((slotId * STORAGE_RDS_SIZE) + O_OCCUPIED)] // is Slot Occupied
                     == 0x01 && compareUwbSessionId(slotId, rds, uwbSessionIdOffset)) {
                 resetRdsInfo(slotId);
                 return;
@@ -439,7 +439,7 @@ public class SusRdsSlot {
         short slotId;
 
         for (slotId = 0; slotId < MAX_RDS_COUNT; slotId++) {
-            if (mRdsInfo[(short) ((slotId * STORAGE_RDS_SIZE) + O_OCCUPIED)] // is Slot Occupied
+            if (sRdsInfo[(short) ((slotId * STORAGE_RDS_SIZE) + O_OCCUPIED)] // is Slot Occupied
                     == 0x01 && compareUwbSessionId(slotId, rds, uwbSessionIdOffset)) {
                 break;
             }

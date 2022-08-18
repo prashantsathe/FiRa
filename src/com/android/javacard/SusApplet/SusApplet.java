@@ -38,9 +38,9 @@ import javacardx.apdu.ExtendedLength;
 public class SusApplet extends Applet
         implements ExtendedLength, SecureUwbService, OnUpgradeListener {
 
-    private static byte[] mTempBuffer; // Send buffer
-    private static SusRdsSlot mSusRDSstorage;
-    private static byte[] mResetFlag;
+    private static byte[] sTempBuffer; // Send buffer
+    private static SusRdsSlot sSusRDSstorage;
+    private static byte[] sResetFlag;
 
     private static Object[] SUPPORTED_APPLET_AIDS;
 
@@ -52,14 +52,14 @@ public class SusApplet extends Applet
     private SusApplet() {
         // if persistent storage is configured
         if (STORE_RDS_PERSISTENT_FLAG) {
-            mResetFlag = JCSystem.makeTransientByteArray((short) 1, JCSystem.CLEAR_ON_RESET);
-            // set mResetFlag
-            mResetFlag[0] = 0x01;
+            sResetFlag = JCSystem.makeTransientByteArray((short) 1, JCSystem.CLEAR_ON_RESET);
+            // set sResetFlag
+            sResetFlag[0] = 0x01;
         }
 
-        mSusRDSstorage = new SusRdsSlot();
+        sSusRDSstorage = new SusRdsSlot();
 
-        mTempBuffer = JCSystem.makeTransientByteArray(TEMP_BUF_SIZE, JCSystem.CLEAR_ON_RESET);
+        sTempBuffer = JCSystem.makeTransientByteArray(TEMP_BUF_SIZE, JCSystem.CLEAR_ON_RESET);
         SUPPORTED_APPLET_AIDS = new Object[] {
                 // FiRa example Applet
                 (Object) new byte[] {(byte) 0xA0, 0x00, 0x00, 0x08, 0x67, 0x03, 0x04},
@@ -96,8 +96,8 @@ public class SusApplet extends Applet
         if (buffer[ISO7816.OFFSET_LC] != 4)
             ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
 
-        return mSusRDSstorage.processGetRdsDataOnUwbSessionId(buffer, (short) ISO7816.OFFSET_CDATA,
-                buffer[ISO7816.OFFSET_P1], mTempBuffer, (short) 0);
+        return sSusRDSstorage.processGetRdsDataOnUwbSessionId(buffer, (short) ISO7816.OFFSET_CDATA,
+                buffer[ISO7816.OFFSET_P1], sTempBuffer, (short) 0);
     }
 
     /**
@@ -110,7 +110,7 @@ public class SusApplet extends Applet
         if (buffer[ISO7816.OFFSET_LC] != 4)
             ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
 
-        mSusRDSstorage.deleteRdsOnUwbSessionId(buffer, ISO7816.OFFSET_CDATA);
+        sSusRDSstorage.deleteRdsOnUwbSessionId(buffer, ISO7816.OFFSET_CDATA);
     }
 
     public void process(APDU apdu) {
@@ -124,9 +124,9 @@ public class SusApplet extends Applet
         }
 
         // if persistent storage is configured then check if reset happen
-        if (STORE_RDS_PERSISTENT_FLAG && mResetFlag[0x00] != 0x01) {
-            mSusRDSstorage.setRdsInfoInTransient();
-            mResetFlag[0] = 0x01;
+        if (STORE_RDS_PERSISTENT_FLAG && sResetFlag[0x00] != 0x01) {
+            sSusRDSstorage.setRdsInfoInTransient();
+            sResetFlag[0] = 0x01;
         }
 
         /* Note: The protocols support for SUS Applet are scp11.a and scp3 */
@@ -147,7 +147,7 @@ public class SusApplet extends Applet
             if (apduBuf[ISO7816.OFFSET_LC] != 0x09) // Check the size in document
                 ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
 
-            responseLength = SusRdsSlot.createSelectResponse(mTempBuffer, (short) 0);
+            responseLength = SusRdsSlot.createSelectResponse(sTempBuffer, (short) 0);
             sendOutgoing(apdu, responseLength);
 
             break;
@@ -204,11 +204,11 @@ public class SusApplet extends Applet
 
                 // Add Status to response buffer
                 // GPC_2.2_D_SCP03_v1.0 section 6.2.5
-                mTempBuffer[responseLength] = (byte)0x90;
-                mTempBuffer[(short)(responseLength + 1)] = (byte)0x00;
+                sTempBuffer[responseLength] = (byte)0x90;
+                sTempBuffer[(short)(responseLength + 1)] = (byte)0x00;
                 responseLength += 2;
 
-                responseLength = sc.wrap(mTempBuffer, (short) 0, responseLength);
+                responseLength = sc.wrap(sTempBuffer, (short) 0, responseLength);
                 sendOutgoing(apdu, responseLength);
             } else {
                 ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
@@ -232,10 +232,10 @@ public class SusApplet extends Applet
 
                 // Add Status to response buffer
                 // GPC_2.2_D_SCP03_v1.0 section 6.2.5
-                mTempBuffer[(short)0] = (byte)0x90;
-                mTempBuffer[(short)1] = (byte)0x00;
+                sTempBuffer[(short)0] = (byte)0x90;
+                sTempBuffer[(short)1] = (byte)0x00;
 
-                responseLength = sc.wrap(mTempBuffer, (short) 0, (short) 2);
+                responseLength = sc.wrap(sTempBuffer, (short) 0, (short) 2);
                 sendOutgoing(apdu, responseLength);
             } else {
                 ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
@@ -251,7 +251,7 @@ public class SusApplet extends Applet
     private void sendOutgoing(APDU apdu, short length) {
         apdu.setOutgoing();
         apdu.setOutgoingLength(length);
-        apdu.sendBytesLong(mTempBuffer, (short) 0, length);
+        apdu.sendBytesLong(sTempBuffer, (short) 0, length);
     }
 
     /*
@@ -275,24 +275,24 @@ public class SusApplet extends Applet
 
         // Initial verification of AID is done in 'getShareableInterfaceObject'
         // Get free slot
-        short slotId = mSusRDSstorage.getAvailableSlotId();
+        short slotId = sSusRDSstorage.getAvailableSlotId();
 
         // parse and verify incoming RDS information
-        short uwbSessionIdOffset = (short) (mSusRDSstorage.parseAndVerifyRangingDataSet(slotId, inBuffer,
+        short uwbSessionIdOffset = (short) (sSusRDSstorage.parseAndVerifyRangingDataSet(slotId, inBuffer,
                 inOffset, inLength) + inOffset);
 
         // Check for duplicate Session ID
         // NOTE: There could be duplicate session ids if more than one applet uses SUS
         // applet
-        mSusRDSstorage.checkDuplicateSessionId(slotId, inBuffer, uwbSessionIdOffset);
+        sSusRDSstorage.checkDuplicateSessionId(slotId, inBuffer, uwbSessionIdOffset);
 
         // we are throwing an exception in case of Memory full or validation fail,
         // so we should get slotId if above function returns back
-        mSusRDSstorage.storeRangingDataSet(slotId, inBuffer, inOffset, inLength);
+        sSusRDSstorage.storeRangingDataSet(slotId, inBuffer, inOffset, inLength);
 
         // Store RDS in persistent memory
         if (STORE_RDS_PERSISTENT_FLAG) {
-            mSusRDSstorage.storeRangingDataSetInPersistent(slotId);
+            sSusRDSstorage.storeRangingDataSetInPersistent(slotId);
         }
 
         return 0;
@@ -311,7 +311,7 @@ public class SusApplet extends Applet
      */
     public short deleteRangingDataSet(byte[] inBuffer, short inOffset, short inLength,
             byte[] outBuffer, short outOffset) {
-        mSusRDSstorage.deleteRangingDataSet(inBuffer, inOffset, inLength, mTempBuffer);
+        sSusRDSstorage.deleteRangingDataSet(inBuffer, inOffset, inLength, sTempBuffer);
         return 0;
     }
 
@@ -319,12 +319,12 @@ public class SusApplet extends Applet
 
         if (isUpgrading()) return null;
 
-        byte aidLength = clientAID.getBytes(mTempBuffer, (short) 0);
+        byte aidLength = clientAID.getBytes(sTempBuffer, (short) 0);
 
         // Verify the sender's AID
         for (short i = 0; i < SUPPORTED_APPLET_AIDS.length; i++) {
             if (aidLength == ((byte[])SUPPORTED_APPLET_AIDS[i]).length &&
-                0 == Util.arrayCompare(mTempBuffer, (short) 0, (byte[]) SUPPORTED_APPLET_AIDS[i],
+                0 == Util.arrayCompare(sTempBuffer, (short) 0, (byte[]) SUPPORTED_APPLET_AIDS[i],
                         (short) 0, aidLength))
                 return this;
         }

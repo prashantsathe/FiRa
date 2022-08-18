@@ -113,7 +113,7 @@ public class FiraInitiator {
                 mInData, IN_DATA_KEYSET_OFFSET, keySetLen);
 
         short outLen = mCrypto.genAes128CbcNopadOutput(Cipher.MODE_ENCRYPT, mInData, macKeyOffset,
-                Scp3Lib.mNullBytes16, (short) 0, SIGNATURE_BLOCK_SIZE, mContext.mBuf,
+                Scp3Lib.sNullBytes16, (short) 0, SIGNATURE_BLOCK_SIZE, mContext.mBuf,
                 O_RANDOM_ICC, SIGNATURE_BLOCK_SIZE, mOutData, (short) 0);
 
         RandomData.getInstance(RandomData.ALG_FAST).nextBytes(mContext.mBuf,
@@ -338,7 +338,7 @@ public class FiraInitiator {
 
         // mesgEncLen now contains actual Msg.1.enc length
         short mesgEncLen = mCrypto.genAes128CbcNopadOutput(Cipher.MODE_ENCRYPT, mOutData, kdkLength,
-                Scp3Lib.mNullBytes16, (short) 0, BlOCK_16BYTES, mInData, mesg1ExtLength, mesgLen,
+                Scp3Lib.sNullBytes16, (short) 0, BlOCK_16BYTES, mInData, mesg1ExtLength, mesgLen,
                 mInData, (short) (mesg1ExtLength + mesgLen));
 
         //////////////////////////////////////////////
@@ -387,7 +387,7 @@ public class FiraInitiator {
                 index, mesgEncLen) - bufferOffset);
     }
 
-    // Public functions
+    // -------------------------------Public functions---------------------------
     public short getGA(byte[] buffer, short bufferOffset, short kvn, short kid, byte securityLevel) {
 
         if (mContext.mBuf[O_SCP_STATUS] == SC2_SELECT_ADF_ASYS) {

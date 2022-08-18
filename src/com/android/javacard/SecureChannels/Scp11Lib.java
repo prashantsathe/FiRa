@@ -43,9 +43,9 @@ public class Scp11Lib {
     private Crypto mCrypto;
     private Scp3Lib mScp3Lib;
     private FiraClientContext mFiraClientContext;
-    private static byte[] mInData;
-    private static byte[] mOutData;
-    private static Certificates mCertificate;
+    private static byte[] sInData;
+    private static byte[] sOutData;
+    private static Certificates sCertificate;
 
     private void Scp11LibInit(FiraClientContext firaClientContext) {
         msecurityLevel = JCSystem.makeTransientByteArray((short) 1, JCSystem.CLEAR_ON_RESET);
@@ -58,10 +58,10 @@ public class Scp11Lib {
 
     private void InitStaticFields() {
         // Check just one field for NULL
-        if (mInData == null) {
-            mInData = JCSystem.makeTransientByteArray((short) 512, JCSystem.CLEAR_ON_RESET);
-            mOutData = JCSystem.makeTransientByteArray((short) 256, JCSystem.CLEAR_ON_RESET);
-            mCertificate = new Certificates();
+        if (sInData == null) {
+            sInData = JCSystem.makeTransientByteArray((short) 512, JCSystem.CLEAR_ON_RESET);
+            sOutData = JCSystem.makeTransientByteArray((short) 256, JCSystem.CLEAR_ON_RESET);
+            sCertificate = new Certificates();
         }
     }
 
@@ -115,26 +115,26 @@ public class Scp11Lib {
             ISOException.throwIt(ISO7816.SW_DATA_INVALID);
         }
 
-        // generate 'ShS' / add 'ShS' to mInData at '0'
+        // generate 'ShS' / add 'ShS' to sInData at '0'
         ShSesSize = mCrypto.generateSecretEC_SVDP_DHC(mKeySetBuff, (short)0, skSdEckaSize,
-                mEPkOceEcka, (short)0, mEPkOceEckaSize[0], mInData, (short)0);
+                mEPkOceEcka, (short)0, mEPkOceEckaSize[0], sInData, (short)0);
 
         ShSssSize = mCrypto.generateSecretEC_SVDP_DHC(mKeySetBuff, (short)0, skSdEckaSize,
-                mCertificate.mPkOceEcka, (short)0, mCertificate.mPkOceEckaSize[0], mInData, ShSesSize);
+                sCertificate.mPkOceEcka, (short)0, sCertificate.mPkOceEckaSize[0], sInData, ShSesSize);
 
-        // add shared info to mInData at 'ShSesSize + ShSssSize'
+        // add shared info to sInData at 'ShSesSize + ShSssSize'
         ShSLength = (short) (ShSesSize + ShSssSize);
-        mInData[ShSLength] = keyUsageQual;
-        mInData[(short)(ShSLength + 1)] = keyType;
-        mInData[(short)(ShSLength + 2)] = keyLength;
+        sInData[ShSLength] = keyUsageQual;
+        sInData[(short)(ShSLength + 1)] = keyType;
+        sInData[(short)(ShSLength + 2)] = keyLength;
         if (hostCardIDLength > (short)0) {
-            Util.arrayCopyNonAtomic(hostCardID, hostCardIDOffset, mInData, (short) (ShSLength + 3), hostCardIDLength);
+            Util.arrayCopyNonAtomic(hostCardID, hostCardIDOffset, sInData, (short) (ShSLength + 3), hostCardIDLength);
         }
 
         // As per Table 6-18: KeyData Assignment, number of keys are 5
-        return mCrypto.kdfX963(mInData, (short)0, ShSLength, mInData, ShSLength,
+        return mCrypto.kdfX963(sInData, (short)0, ShSLength, sInData, ShSLength,
                                 (short)(3 + hostCardIDLength), (short) (keyLength * 5),
-                                   mOutData, (short) 0);
+                                   sOutData, (short) 0);
     }
 
     private short generateReceiptAndResponse(byte[] buffer, short bufferOffset, short tagA6Offset, short tagA6Length,
@@ -153,7 +153,7 @@ public class Scp11Lib {
             ISOException.throwIt(ISO7816.SW_DATA_INVALID);
         }
 
-        // return keys size is (5*keyLength) and keys are stored in 'mOutData'
+        // return keys size is (5*keyLength) and keys are stored in 'sOutData'
         short keysLength = deriveSessionKey(keyUsageQual, keyType, keyLength, hostCardID,
                                 hostCardIDOffset, hostCardIDLength, kId, kVn);
 
@@ -162,25 +162,25 @@ public class Scp11Lib {
         }
 
         // Extract keys defined in Table 6-18: KeyData Assignment for further use.
-        mScp3Lib.setKeys(mOutData, keyLength, keyLength);
+        mScp3Lib.setKeys(sOutData, keyLength, keyLength);
 
         // Table 6-19: Input Data for Receipt Calculation
-        // store input data in to mInData from "keyStartOffset + (keyLength*5)"
+        // store input data in to sInData from "keyStartOffset + (keyLength*5)"
         // Copy A6 tag
-        Util.arrayCopyNonAtomic(buffer, (short)(bufferOffset + tagA6Offset), mInData,
+        Util.arrayCopyNonAtomic(buffer, (short)(bufferOffset + tagA6Offset), sInData,
                 inputDataOffset, tagA6Length);
         inputDataLength += tagA6Length;
 
         // copy '5F49' tag ePK.OCE.ECKA
-        Util.arrayCopyNonAtomic(buffer, (short)(bufferOffset + inputDataLength), mInData,
+        Util.arrayCopyNonAtomic(buffer, (short)(bufferOffset + inputDataLength), sInData,
             (short)(inputDataOffset + tagA6Length), tag5f49Length);
         inputDataLength += tag5f49Length;
 
         // copy '5F49' tag PK.SD.ECKA
-        mInData[inputDataLength++] = 0x5f;
-        mInData[inputDataLength++] = 0x49;
-        inputDataLength += BerTlvBuilder.fillLength(mInData, pkSdEckaSize, inputDataLength);
-        Util.arrayCopyNonAtomic(mKeySetBuff, (short) 0, mInData,
+        sInData[inputDataLength++] = 0x5f;
+        sInData[inputDataLength++] = 0x49;
+        inputDataLength += BerTlvBuilder.fillLength(sInData, pkSdEckaSize, inputDataLength);
+        Util.arrayCopyNonAtomic(mKeySetBuff, (short) 0, sInData,
                 (short) (inputDataOffset + inputDataLength), pkSdEckaSize);
         inputDataLength += pkSdEckaSize;
 
@@ -202,8 +202,8 @@ public class Scp11Lib {
         sendOutBuff[(short)(sendOutBuffOffset + (index++))] = 0x10;
 
         // generate and store the receipt in sendOutBuff
-        mCrypto.genCmacAes128(mOutData, (short) 0, (short) keyLength,
-                mInData, inputDataOffset, inputDataLength, sendOutBuff, (short) (sendOutBuffOffset + index));
+        mCrypto.genCmacAes128(sOutData, (short) 0, (short) keyLength,
+                sInData, inputDataOffset, inputDataLength, sendOutBuff, (short) (sendOutBuffOffset + index));
 
         return (short) (index + 16); // 'genCmacAes128' generates 16 bytes of cmac
     }
@@ -397,17 +397,18 @@ public class Scp11Lib {
              *    the CSN of CERT.OCE.ECKA shall not be checked. Otherwise, if this CSN is not
              *    referenced in the whitelist, then the certificate shall be rejected.
              */
-            if (!mCertificate.verifyCert(buffer, (short) (offset + index), dataLen, firstCert/*for CSN check*/) ||
+            if (!sCertificate.verifyCert(buffer, (short) (offset + index), dataLen, firstCert/*for CSN check*/) ||
                     !mCrypto.verifyECDSAPlainSignatureSha256(
-                            firstCert ? mKeySetBuff : mCertificate.mPkOceEcka, (short) 0,
-                                    firstCert ? pkCaKlocEcdsaSize: mCertificate.mPkOceEckaSize[0], buffer,
-                            (short) (offset + index), mCertificate.mSignatureOffset[0], buffer,
-                            (short) (offset + mCertificate.mSignatureDataOffset[0] + index), mCertificate.mSignatureLength[0])) {
+                            firstCert ? mKeySetBuff : sCertificate.mPkOceEcka, (short) 0,
+                                    firstCert ? pkCaKlocEcdsaSize: sCertificate.mPkOceEckaSize[0], buffer,
+                            (short) (offset + index), sCertificate.mSignatureOffset[0], buffer,
+                            (short) (offset + sCertificate.mSignatureDataOffset[0] + index),
+                            sCertificate.mSignatureLength[0])) {
                 ISOException.throwIt(CERT_VERIFICATION_FAILED);
             }
 
             // if CERT.OCE.ECKA ('00 80': Key agreement) found return success
-            if (mCertificate.mCertificateKeyUsageStatus[0] == (byte) 0x80) {
+            if (sCertificate.mCertificateKeyUsageStatus[0] == (byte) 0x80) {
                 return true;
             }
 

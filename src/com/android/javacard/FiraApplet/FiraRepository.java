@@ -50,6 +50,7 @@ public class FiraRepository {
             + (FiraSpecs.IMPL_DYNAMIC_SLOT_MAX_COUNT
                     * (FiraSpecs.IMPL_ADF_STATIC_DATA_MAX_SIZE_PER_SLOT
                             + FiraSpecs.IMPL_ADF_EPHEMERAL_DATA_MAX_SIZE_PER_SLOT)));
+
     private static final byte STATIC_PART = 0;
     private static final byte EPHEMERAL_PART = 1;
     private final static byte FREE = (byte) 0x80;
@@ -71,31 +72,21 @@ public class FiraRepository {
     // length is always 2 bytes.
     private final static byte HEADER_LEN = 2;
     private static final byte APPLET_DATA_CURSOR = 0;
-    private static short[] retValues;
-    private static short[] slots;
-    private static byte[] persistentMem;
-    private static byte[] transientMem;
+    private static short[] sRetValues;
+    private static short[] sSlots;
+    private static byte[] sPersistentMem;
+    private static byte[] sTransientMem;
 
     public static void init() {
-        retValues = JCSystem.makeTransientShortArray((short) 5, JCSystem.CLEAR_ON_DESELECT);
+        sRetValues = JCSystem.makeTransientShortArray((short) 5, JCSystem.CLEAR_ON_DESELECT);
         // NOTE: for upgrade if new slots are added then they have to be added at the
         // end. The old data
         // must be backed up.
-        slots = new short[(short) ((FiraSpecs.IMPL_DYNAMIC_SLOT_MAX_COUNT
+        sSlots = new short[(short) ((FiraSpecs.IMPL_DYNAMIC_SLOT_MAX_COUNT
                 + FiraSpecs.IMPL_STATIC_SLOT_MAX_COUNT) * 2)];
-        persistentMem = new byte[PERSISTENCE_MEM_SIZE];
-        transientMem = JCSystem.makeTransientByteArray(TRANSIENT_MEM_SIZE, JCSystem.CLEAR_ON_RESET);
+        sPersistentMem = new byte[PERSISTENCE_MEM_SIZE];
+        sTransientMem = JCSystem.makeTransientByteArray(TRANSIENT_MEM_SIZE, JCSystem.CLEAR_ON_RESET);
         initSlots(FiraSpecs.IMPL_STATIC_SLOT_MAX_COUNT, FiraSpecs.IMPL_DYNAMIC_SLOT_MAX_COUNT);
-        // TODO remove the following - for testing
-        initDummyAppletData();
-    }
-
-    private static void initDummyAppletData() {
-        byte[] buf = { (byte) 0, (byte) 14, (byte) FiraSpecs.TAG_MASTER_KEY, (byte) 6, (byte) 0x0A,
-                (byte) 0x0A, (byte) 0x0A, (byte) 0x0A, (byte) 0x0A, (byte) 0x0A,
-                (byte) FiraSpecs.TAG_DEVICE_UID, (byte) 4, (byte) 0, (byte) 1, (byte) 0, (byte) 1 };
-        Util.arrayCopyNonAtomic(buf, (short) 0, persistentMem, APPLET_DATA_CURSOR,
-                (short) buf.length);
     }
 
     private static void initSlots(byte staticSlots, byte dynamicSlots) {
@@ -109,16 +100,16 @@ public class FiraRepository {
 
         while (i < maxSlots) {
             if (i < staticSlots) {
-                slots[(short) (i + STATIC_PART)] = pCursor;
-                persistentMem[pCursor] |= FREE;
+                sSlots[(short) (i + STATIC_PART)] = pCursor;
+                sPersistentMem[pCursor] |= FREE;
                 pCursor += FiraSpecs.IMPL_ADF_STATIC_DATA_MAX_SIZE_PER_SLOT;
             } else {
-                slots[(short) (i + STATIC_PART)] = tCursor;
-                transientMem[tCursor] |= FREE;
+                sSlots[(short) (i + STATIC_PART)] = tCursor;
+                sTransientMem[tCursor] |= FREE;
                 tCursor += FiraSpecs.IMPL_ADF_STATIC_DATA_MAX_SIZE_PER_SLOT;
             }
-            slots[(short) (i + EPHEMERAL_PART)] = tCursor;
-            transientMem[tCursor] |= (byte) 0x80;
+            sSlots[(short) (i + EPHEMERAL_PART)] = tCursor;
+            sTransientMem[tCursor] |= (byte) 0x80;
             tCursor += FiraSpecs.IMPL_ADF_EPHEMERAL_DATA_MAX_SIZE_PER_SLOT;
             if (pCursor > PERSISTENCE_MEM_SIZE || tCursor > TRANSIENT_MEM_SIZE) {
                 ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
@@ -132,26 +123,26 @@ public class FiraRepository {
         short end = (short) (index + len);
 
         while (index < end) {
-            index = FiraUtil.getNextTag(buf, index, len, true, retValues);
-            addDataObject(buf, retValues[0], (short) (index - retValues[0]), slotId);
+            index = FiraUtil.getNextTag(buf, index, len, true, sRetValues);
+            addDataObject(buf, sRetValues[0], (short) (index - sRetValues[0]), slotId);
         }
     }
 
     public static void addDataObject(byte[] buf, short index, short len, byte slotId) {
-        FiraUtil.readBERTag(buf, index, len, retValues);
-        short tag = retValues[0];
+        FiraUtil.readBERTag(buf, index, len, sRetValues);
+        short tag = sRetValues[0];
         byte[] mem;
 
         if (slotId == APPLET_SLOT) {
-            mem = getAppletData(tag, retValues);
+            mem = getAppletData(tag, sRetValues);
         } else if (slotId == ROOT_SLOT) {
-            mem = getSharedAdfData(tag, retValues);
+            mem = getSharedAdfData(tag, sRetValues);
         } else {
-            mem = getSlotSpecificAdfData(tag, slotId, retValues);
+            mem = getSlotSpecificAdfData(tag, slotId, sRetValues);
         }
-        short maxLen = retValues[0];
-        short cursor = retValues[1];
-        short usedLen = retValues[2];
+        short maxLen = sRetValues[0];
+        short cursor = sRetValues[1];
+        short usedLen = sRetValues[2];
         short start = (short) (cursor - HEADER_LEN);
         short i = (short) (cursor + usedLen);
         short end = (short) (start + maxLen);
@@ -170,23 +161,23 @@ public class FiraRepository {
     }
 
     // function return values are same as 'getNextTag'
-    // retValues[0] - start index of TLV object 
-    // retValues[1] - tag id
-    // retValues[2] - total tag length 
-    // retValues[3] = start index of TLV value field.
+    // sRetValues[0] - start index of TLV object 
+    // sRetValues[1] - tag id
+    // sRetValues[2] - total tag length 
+    // sRetValues[3] = start index of TLV value field.
     private static boolean isMoreThanOneTag(byte[] buf, short offset, short len) {
         // first read DO
-        FiraUtil.getNextTag(buf, offset, len, true, retValues);
+        FiraUtil.getNextTag(buf, offset, len, true, sRetValues);
 
-        short doLen = retValues[2]; // DO len
+        short doLen = sRetValues[2]; // DO len
         // read the child tag
         if (doLen > 0) {
-            short totalTagLen = (short) (FiraUtil.getNextTag(buf, retValues[3], retValues[2], true,
-                    retValues) - retValues[0]);
+            short totalTagLen = (short) (FiraUtil.getNextTag(buf, sRetValues[3], sRetValues[2], true,
+                    sRetValues) - sRetValues[0]);
             if (totalTagLen < doLen) {
                 return true;
             }
-            retValues[2] = totalTagLen;
+            sRetValues[2] = totalTagLen;
         }
         return false;
     }
@@ -200,23 +191,23 @@ public class FiraRepository {
             ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
 
         // get DO
-        FiraUtil.getNextTag(mem, tagStart, tagLen, true, retValues);
-        short doTagId = retValues[1]; // DO tag id
+        FiraUtil.getNextTag(mem, tagStart, tagLen, true, sRetValues);
+        short doTagId = sRetValues[1]; // DO tag id
         short totalTagLen = 0, nextIndex = 0;
-        short mIndex = retValues[3];  // DO Value Index
-        short mLen = retValues[2];    // DO Tag Length
+        short mIndex = sRetValues[3];  // DO Value Index
+        short mLen = sRetValues[2];    // DO Tag Length
         boolean match = false;
 
         while (mLen > 0) {
-            nextIndex = FiraUtil.getNextTag(mem, mIndex, mLen, true, retValues);
-            totalTagLen = (short) (nextIndex - retValues[0]);
+            nextIndex = FiraUtil.getNextTag(mem, mIndex, mLen, true, sRetValues);
+            totalTagLen = (short) (nextIndex - sRetValues[0]);
             mIndex = nextIndex;
 
-            if (tagId == retValues[1]) {
+            if (tagId == sRetValues[1]) {
                 bufIndex = FiraUtil.pushBytes(buf, bufIndex, buf, offset, len);
                 match = true;
             } else {
-                bufIndex = FiraUtil.pushBytes(buf, bufIndex, mem, retValues[0], totalTagLen);
+                bufIndex = FiraUtil.pushBytes(buf, bufIndex, mem, sRetValues[0], totalTagLen);
             }
             mLen -= totalTagLen;
         }
@@ -228,7 +219,7 @@ public class FiraRepository {
         // finally add DO
         bufIndex = FiraUtil.pushBERLength(buf, bufIndex, (short) (buf.length - bufIndex));
         bufIndex = FiraUtil.pushBERTag(buf, bufIndex, doTagId);
-        retValues[0] = (short) (buf.length - bufIndex); // return total length
+        sRetValues[0] = (short) (buf.length - bufIndex); // return total length
         return bufIndex;
     }
 
@@ -241,35 +232,36 @@ public class FiraRepository {
         byte[] mem;
 
         if (slotId == APPLET_SLOT) {
-            mem = getAppletData(dataObjectTag, retValues);
+            mem = getAppletData(dataObjectTag, sRetValues);
         } else if (slotId == ROOT_SLOT) {
-            mem = getSharedAdfData(dataObjectTag, retValues);
+            mem = getSharedAdfData(dataObjectTag, sRetValues);
         } else {
-            mem = getSlotSpecificAdfData(dataObjectTag, slotId, retValues);
+            mem = getSlotSpecificAdfData(dataObjectTag, slotId, sRetValues);
         }
-        short maxLen = retValues[0];
-        short cursor = retValues[1];
-        short usedLen = retValues[2];
+        short maxLen = sRetValues[0];
+        short cursor = sRetValues[1];
+        short usedLen = sRetValues[2];
         short dataEnd = (short) (cursor + usedLen);
-        retValues[0] = retValues[1] = retValues[2] = retValues[3] = 0;
+        sRetValues[0] = sRetValues[1] = sRetValues[2] = sRetValues[3] = 0;
         // Read the tag from stored data
         short tagEnd = FiraSpecs.INVALID_VALUE;
         short tagStart = 0;
         short tagLen = 0;
 
         if (usedLen > 0) {
-            tagEnd = FiraUtil.getTag(dataObjectTag, mem, cursor, usedLen, false, retValues);
+            tagEnd = FiraUtil.getTag(dataObjectTag, mem, cursor, usedLen, false, sRetValues);
         }
 
         if (tagEnd != FiraSpecs.INVALID_VALUE) {
-            tagStart = retValues[0];
+            tagStart = sRetValues[0];
             tagLen = (short) (tagEnd - tagStart);
 
             // Check if DO has more than one tag
             if (!isMoreThanOneTag(buf, offset, len)) {
-                // now 'retValues' contains first tag information present in the 'buf'
-                offset = getNewDO(mem, tagStart, tagLen, buf, retValues[0], retValues[2], retValues[1]);
-                len = retValues[0];
+                // now 'sRetValues' contains first tag information present in the 'buf'
+                offset = getNewDO(mem, tagStart, tagLen, buf, sRetValues[0], sRetValues[2],
+                        sRetValues[1]);
+                len = sRetValues[0];
             }
         }
         JCSystem.beginTransaction();
@@ -324,10 +316,10 @@ public class FiraRepository {
         case FiraSpecs.TAG_UWB_CONTROLEE_INFO:
         case FiraSpecs.TAG_UWB_SESSION_DATA:
             retVal[0] = FiraSpecs.IMPL_ADF_EPHEMERAL_DATA_MAX_SIZE_PER_SLOT;
-            retVal[1] = slots[(short) (EPHEMERAL_PART + (short) (slotId * 2))];
-            retVal[2] = Util.getShort(transientMem, retVal[1]);
+            retVal[1] = sSlots[(short) (EPHEMERAL_PART + (short) (slotId * 2))];
+            retVal[2] = Util.getShort(sTransientMem, retVal[1]);
             retVal[1] += HEADER_LEN;
-            return transientMem;
+            return sTransientMem;
         case FiraSpecs.TAG_FIRA_SC_CRED:// TAG_ADF_PROVISIONING_CRED
         case FiraSpecs.TAG_STORED_ADF_PROVISIONING_CRED:
         case FiraSpecs.TAG_OID:
@@ -338,10 +330,10 @@ public class FiraRepository {
         case FiraSpecs.TAG_SERVICE_DATA:
         case FiraSpecs.TAG_CMD_ROUTE_INFO:
             retVal[0] = FiraSpecs.IMPL_ADF_STATIC_DATA_MAX_SIZE_PER_SLOT;
-            retVal[1] = slots[(short) (STATIC_PART + (short) (slotId * 2))];
-            retVal[2] = Util.getShort(persistentMem, retVal[1]);
+            retVal[1] = sSlots[(short) (STATIC_PART + (short) (slotId * 2))];
+            retVal[2] = Util.getShort(sPersistentMem, retVal[1]);
             retVal[1] += HEADER_LEN;
-            return persistentMem;
+            return sPersistentMem;
         default:
             break;
         }
@@ -354,9 +346,9 @@ public class FiraRepository {
         case FiraSpecs.TAG_PA_RECORD:
             retVal[0] = FiraSpecs.IMPL_SHARED_ADF_DATA_MAX_SIZE;
             retVal[1] = FiraSpecs.IMPL_APPLET_SPECIFIC_DATA_MAX_SIZE;
-            retVal[2] = Util.getShort(persistentMem, retVal[1]);
+            retVal[2] = Util.getShort(sPersistentMem, retVal[1]);
             retVal[1] += HEADER_LEN;
-            return persistentMem;
+            return sPersistentMem;
         default:
             break;
         }
@@ -372,9 +364,9 @@ public class FiraRepository {
         case FiraSpecs.TAG_APPLET_CERT_STORE:
             retVal[0] = FiraSpecs.IMPL_APPLET_SPECIFIC_DATA_MAX_SIZE;
             retVal[1] = APPLET_DATA_CURSOR;
-            retVal[2] = Util.getShort(persistentMem, retVal[1]);
+            retVal[2] = Util.getShort(sPersistentMem, retVal[1]);
             retVal[1] += HEADER_LEN;
-            return persistentMem;
+            return sPersistentMem;
         default:
             break;
         }
@@ -388,7 +380,7 @@ public class FiraRepository {
         byte i = slotStart;
 
         while (i < slotEnd) {
-            short cursor = slots[(short) (i + STATIC_PART)];
+            short cursor = sSlots[(short) (i + STATIC_PART)];
             if ((byte) (mem[cursor] & FREE) != 0) {
                 mem[cursor] &= RESERVED;
                 return (short) (i / 2);
@@ -398,35 +390,35 @@ public class FiraRepository {
         return FiraSpecs.INVALID_VALUE;
     }
 
-    // The static slots are from 0 to IMPL_STATIC_SLOT_MAX_COUNT
+    // The static sSlots are from 0 to IMPL_STATIC_SLOT_MAX_COUNT
     public static short reserveStaticSlot() {
-        return reserveSlot((byte) 0, FiraSpecs.IMPL_STATIC_SLOT_MAX_COUNT, persistentMem);
+        return reserveSlot((byte) 0, FiraSpecs.IMPL_STATIC_SLOT_MAX_COUNT, sPersistentMem);
     }
 
-    // The dynamic slots begin after static slots - so the range is
+    // The dynamic slots begin after static sSlots - so the range is
     // IMPL_STATIC_SLOT_MAX_COUNT to
     // IMPL_STATIC_SLOT_MAX_COUNT + IMPL_DYNAMIC_SLOT_MAX_COUNT
     public static short reserveDynamicSlot() {
         return reserveSlot(FiraSpecs.IMPL_STATIC_SLOT_MAX_COUNT,
                 (byte) (FiraSpecs.IMPL_STATIC_SLOT_MAX_COUNT
                         + FiraSpecs.IMPL_DYNAMIC_SLOT_MAX_COUNT),
-                transientMem);
+                sTransientMem);
     }
 
     public static void freeSlot(byte slotId) {
-        short cursor = slots[(short) ((slotId * 2) + STATIC_PART)];
-        byte[] mem = persistentMem;
+        short cursor = sSlots[(short) ((slotId * 2) + STATIC_PART)];
+        byte[] mem = sPersistentMem;
 
         if (slotId > FiraSpecs.IMPL_STATIC_SLOT_MAX_COUNT) {
-            mem = transientMem;
+            mem = sTransientMem;
         }
 
         if ((byte) (mem[cursor] & FREE) == 0) {
             Util.arrayFillNonAtomic(mem, cursor, FiraSpecs.IMPL_ADF_STATIC_DATA_MAX_SIZE_PER_SLOT,
                     (byte) 0);
             mem[cursor] |= FREE;
-            mem = transientMem;
-            cursor = slots[(short) ((slotId * 2) + EPHEMERAL_PART)];
+            mem = sTransientMem;
+            cursor = sSlots[(short) ((slotId * 2) + EPHEMERAL_PART)];
             Util.arrayFillNonAtomic(mem, cursor,
                     FiraSpecs.IMPL_ADF_EPHEMERAL_DATA_MAX_SIZE_PER_SLOT, (byte) 0);
         }
@@ -435,13 +427,13 @@ public class FiraRepository {
     public static byte getSlotUsingOid(byte[] oid, short index, short len) {
         byte i = 0;
         while (i < FiraSpecs.IMPL_STATIC_SLOT_MAX_COUNT) {
-            byte[] mem = getSlotSpecificAdfData(FiraSpecs.TAG_OID, i, retValues);
-            short cursor = retValues[1];
-            short usedLen = retValues[2];
+            byte[] mem = getSlotSpecificAdfData(FiraSpecs.TAG_OID, i, sRetValues);
+            short cursor = sRetValues[1];
+            short usedLen = sRetValues[2];
             if (usedLen > 0) {
                 short tagEnd = FiraUtil.getTag(FiraSpecs.TAG_OID, mem, cursor, usedLen, false,
-                        retValues);
-                short tagStart = retValues[3];
+                        sRetValues);
+                short tagStart = sRetValues[3];
                 if (tagEnd != FiraSpecs.INVALID_VALUE
                       // len can beless than total oid len
                         && Util.arrayCompare(oid, index, mem, tagStart, len) == 0) {
@@ -453,19 +445,19 @@ public class FiraRepository {
         return FiraSpecs.INVALID_VALUE;
     }
 
-    // This will only be used for static slots
+    // This will only be used for static sSlots
     public static byte getSlot(byte[] oid, short index, short len) {
         byte i = 0;
 
         while (i < FiraSpecs.IMPL_STATIC_SLOT_MAX_COUNT) {
-            byte[] mem = getSlotSpecificAdfData(FiraSpecs.TAG_OID, i, retValues);
-            short cursor = retValues[1];
-            short usedLen = retValues[2];
+            byte[] mem = getSlotSpecificAdfData(FiraSpecs.TAG_OID, i, sRetValues);
+            short cursor = sRetValues[1];
+            short usedLen = sRetValues[2];
 
             if (usedLen > 0) {
                 short tagEnd = FiraUtil.getTag(FiraSpecs.TAG_OID, mem, cursor, usedLen, false,
-                        retValues);
-                short tagStart = retValues[0];
+                        sRetValues);
+                short tagStart = sRetValues[0];
 
                 if (tagEnd != FiraSpecs.INVALID_VALUE
                         // len can beless than total oid len
@@ -479,43 +471,43 @@ public class FiraRepository {
     }
 
     public static boolean isSlotFree(byte slot) {
-        getSlotSpecificAdfData(FiraSpecs.TAG_OID, slot, retValues);
-        return retValues[2] < 0;
+        getSlotSpecificAdfData(FiraSpecs.TAG_OID, slot, sRetValues);
+        return sRetValues[2] < 0;
     }
 
     public static boolean isSlotSelected(byte slot) {
-        getSlotSpecificAdfData(FiraSpecs.TAG_UWB_CONTROLEE_INFO, slot, retValues);
-        return retValues[2] < 0;
+        getSlotSpecificAdfData(FiraSpecs.TAG_UWB_CONTROLEE_INFO, slot, sRetValues);
+        return sRetValues[2] < 0;
     }
 
     public static void selectAdf(byte slot) {
         byte[] mem = null;
-        mem = getSlotSpecificAdfData(FiraSpecs.TAG_UWB_CONTROLEE_INFO, slot, retValues);
+        mem = getSlotSpecificAdfData(FiraSpecs.TAG_UWB_CONTROLEE_INFO, slot, sRetValues);
 
-        if (retValues[2] > 0) {
+        if (sRetValues[2] > 0) {
             ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
         }
-        mem[(short) (retValues[1] - HEADER_LEN)] &= 0x7F;
+        mem[(short) (sRetValues[1] - HEADER_LEN)] &= 0x7F;
     }
 
     public static void deselectAdf(byte slot) {
-        byte[] mem = getSlotSpecificAdfData(FiraSpecs.TAG_UWB_CONTROLEE_INFO, slot, retValues);
+        byte[] mem = getSlotSpecificAdfData(FiraSpecs.TAG_UWB_CONTROLEE_INFO, slot, sRetValues);
 
-        if (retValues[2] < 0) {
+        if (sRetValues[2] < 0) {
             ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
         }
-        mem[(short) (retValues[1] - HEADER_LEN)] |= 0x80;
+        mem[(short) (sRetValues[1] - HEADER_LEN)] |= 0x80;
     }
 
     public static void putSharedDataObject(byte[] buf, short index, short len) {
-        FiraUtil.readBERTag(buf, index, len, retValues);
-        short tag = retValues[0];
+        FiraUtil.readBERTag(buf, index, len, sRetValues);
+        short tag = sRetValues[0];
         putData(tag, buf, index, len, ROOT_SLOT);
     }
 
     public static void putAppletDataObject(short tag, byte[] buf, short index, short len) {
-        //FiraUtil.readBERTag(buf, index, len, retValues);
-        //short tag = retValues[0];
+        //FiraUtil.readBERTag(buf, index, len, sRetValues);
+        //short tag = sRetValues[0];
         putData(tag, buf, index, len, APPLET_SLOT);
     }
 }
