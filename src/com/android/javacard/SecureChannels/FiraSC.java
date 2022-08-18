@@ -227,12 +227,9 @@ public class FiraSC extends FiraSecureChannel {
                 }
 
             } else if (buffer[index] == T_81) {
-
-                // E.Pub.2 is of 65 bytes
                 Util.arrayCopyNonAtomic(buffer, (short) (index + 2), mContext.mBuf,
                         O_EPHEMERAL_PUBKEY2, (short) buffer[(short) (index + 1)]);
                 return true;
-
             } else if (buffer[index++] == T_84) {
 
                 short len84 = BerTlvParser.getDataLength(buffer, index);
@@ -304,7 +301,6 @@ public class FiraSC extends FiraSecureChannel {
                             msg2extLen, EC_PK_KEY_LENGTH);
                     msg2extLen += EC_PK_KEY_LENGTH;
                     msg2extLen -= msg2EncLen;
-                    // sCrypto.addPaddingM2(sInData, (short) 0, msg2extIndex);
 
                     if (sCrypto.verifyECDSAPlainSignatureSha256(mContext.mBuf, O_KEY_PUB_ENC,
                             EC_PK_KEY_LENGTH, sInData, msg2EncLen, msg2extLen, sInData, (short) 1,
@@ -320,19 +316,23 @@ public class FiraSC extends FiraSecureChannel {
     }
 
     private short getUWBrootKeyBufferSet(byte[] buffer, short bufferOffset) {
+         // Need to have generic function to retrieve the key set based on type and kvn
+        return mFiraClientContext.getSelectedKvn(FiraClientContext.UWB_ROOT_KEY_SET, buffer,
+                bufferOffset);
+        /*
         short sc1TagNumber = Util.getShort(mContext.mBuf, O_SC1_TAGNUMBER);
-
         return mFiraClientContext.getKeySet(mContext.mBuf[O_P2] == 0 ?
                 sc1TagNumber : mContext.mBuf[O_P2], buffer, bufferOffset);
+        */
     }
 
     private short getUWBrootKeyOffset(byte[] buffer, short bufferOffset, short bufferLen) {
         return ClientContext.getTagValueOffset(UWB_ROOT_KEYTYPE, buffer, bufferOffset, bufferLen);
     }
 
-    private short getLabelBuffer(byte[] buffer, short bufferOffset) {
-        return ClientContext.getLabel(mContext.mBuf, O_SELECTED_OID,
-                mContext.mBuf[O_SELECTED_OID_LEN] ,buffer, bufferOffset);
+    private short getLabelOffset(byte[] buffer, short bufferOffset, short bufferLen) {
+        return ClientContext.getTagValueOffset(UWB_DERIVATION_LABEL, buffer, bufferOffset,
+                bufferLen);
     }
 
     private short generateRDSbuffer(byte[] output, short outputOffset, short outputLength,
@@ -356,7 +356,7 @@ public class FiraSC extends FiraSecureChannel {
 
              // 0xC2 2 Proximity Distance
              if ((rdsFlag & (short) 0x04) == (short) 0x04) {
-                 // TODO: change the value buffer after integration
+                 // change the value buffer after integration
                  offset = BerTlvBuilder.addTlv(output, offset, outputLength,
                          (byte) 0xC2, uwbSessionID, uwbSessionIDoffset,
                          (short) 4);
@@ -364,7 +364,7 @@ public class FiraSC extends FiraSecureChannel {
 
              // 0xC3 2 Angle of Arrival (AoA)
              if ((rdsFlag & (short) 0x08) == (short) 0x08) {
-                 // TODO: change the value buffer after integration
+                 // change the value buffer after integration
                  offset = BerTlvBuilder.addTlv(output, offset, outputLength,
                          (byte) 0xC3, uwbSessionID, uwbSessionIDoffset,
                          (short) 4);
@@ -372,7 +372,7 @@ public class FiraSC extends FiraSecureChannel {
 
              // 0xC4 1-128 Client specific data
              if ((rdsFlag & (short) 0x10) == (short) 0x10) {
-                 // TODO: change the value buffer after integration
+                 // change the value buffer after integration
                  offset = BerTlvBuilder.addTlv(output, offset, outputLength,
                          (byte) 0xC4, uwbSessionID, uwbSessionIDoffset,
                          (short) 4);
@@ -380,7 +380,7 @@ public class FiraSC extends FiraSecureChannel {
 
              // 0xC6 var. Key Exchange Key Identifier
              if ((rdsFlag & (short) 0x40) == (short) 0x40) {
-                 // TODO: change the value buffer after integration
+                 // change the value buffer after integration
                  offset = BerTlvBuilder.addTlv(output, offset, outputLength,
                          (byte) 0xC6, uwbSessionID, uwbSessionIDoffset,
                          (short) 4);
@@ -388,7 +388,7 @@ public class FiraSC extends FiraSecureChannel {
 
              // 0xCE 5-16 Service Applet AID
              if ((rdsFlag & (short) 0x0200) == (short) 0x0200) {
-                 // TODO: change the value buffer after integration
+                 // change the value buffer after integration
                  offset = BerTlvBuilder.addTlv(output, offset, outputLength,
                          (byte) 0xCE, uwbSessionID, uwbSessionIDoffset,
                          (short) 4);
@@ -686,7 +686,7 @@ public class FiraSC extends FiraSecureChannel {
      * @param useAsDiversificationData : 
      * @param uwbSessionSessionId : In case of uni-cast(non multi-cast) this is a UWB session id
      *                              buffer else null 
-     *        **ASSUMPTION** = if session id is null mean this is a multi-cast session and we have
+     *        **ASSUMPTION** = if session id is null means this is a multi-cast session and we have
      *         to generate session sub-key and session sub-id
      * @param uwbSessionSessionIdOffset : offset of uwbSessionOrSubSessionID
      *
@@ -706,21 +706,20 @@ public class FiraSC extends FiraSecureChannel {
         //      if useSessionKeyInfo is true and useAsDiversificationData is false
         // 101: use value of UWB_SESSION_KEY_INFO as diversification data
         //      if both useSessionKeyInfo and useAsDiversificationData are true
-        // NOTE:- Accumulate uwbsesseionid and uwbsessionkey in 'mInput' at/from 'UWB_DATA_OFFSET'
 
+        // NOTE:- Accumulate uwbsesseionid and uwbsessionkey in 'mInput' at/from 'UWB_DATA_OFFSET'
         if (useSessionKeyInfo) {
             if (useAsDiversificationData) {
                 // “use value of UWB_SESSION_KEY_INFO as derivation data
                 short uwbRootKeySetLength = getUWBrootKeyBufferSet(sInData, (short) 0);
                 short uwbRootKeyOffset = getUWBrootKeyOffset(sInData, (short) 0,
                         uwbRootKeySetLength);
-                short uwbLabelLength = getLabelBuffer(sInData, uwbRootKeySetLength);
+                short uwbLabelOffset = getLabelOffset(sInData, (short) 0, uwbRootKeySetLength);
 
                 uwbSessionKeyLength = sCrypto.cmacKdfCounterModeUWBsessionKey(sInData,
                         uwbRootKeyOffset, sInData[(short) (uwbRootKeyOffset - 1)] /*length offset = value offset - 1*/,
-                        sInData, uwbRootKeySetLength, uwbLabelLength, sessionKeyInfo,
+                        sInData, uwbLabelOffset, UWB_DERIVATION_LABEL_SIZE, sessionKeyInfo,
                         sessionKeyInfoOffset, sessionKeyInfoLen, sInData, UWB_DATA_OFFSET);
-
             } else {
                 // “use value of UWB_SESSION_KEY_INFO directly as UWB Session Key
                 uwbSessionKeyLength = (short) (Util.arrayCopyNonAtomic(sessionKeyInfo,

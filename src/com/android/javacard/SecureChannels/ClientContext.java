@@ -33,15 +33,6 @@ public class ClientContext {
                 (byte) 0x02) - bufferOffset);
     }
 
-    public static short getLabel(byte[] oidBuff, short oidBuffOffset, byte oidBuffLength,
-            byte[] buffer, short bufferOffset) {
-        buffer[bufferOffset++] = 0x01;
-        buffer[bufferOffset++] = 0x02;
-        buffer[bufferOffset++] = 0x03;
-        buffer[bufferOffset++] = 0x04;
-        return (short) 4;
-    }
-
     // Table 74/75/76 of CSML CR v0.9_v123-TWG-May28-NXP-CSMLTT-NXP_ab.pdf
     public static short getFiRaCert2(byte[] buffer, short bufferOffset, FiraClientContext ctx) {
         return ctx.getSDCertificate(buffer, bufferOffset);

@@ -75,6 +75,8 @@ public class FiraConstant {
     public static final byte PUB_KEY_CERTIFICATE = (byte) 0x85;
     public static final byte PRIVATE_KEYTYPE = (byte) 0x86;
     public static final byte UWB_ROOT_KEYTYPE = (byte) 0x84;
+    public static final byte UWB_DERIVATION_LABEL = (byte) 0x85;
+    public static final short UWB_DERIVATION_LABEL_SIZE = (short) 4;
     public static final byte SECURE_CHANNEL_IDENTIFIER = (byte) 0x80;
     public static final short BlOCK_16BYTES = (short) 16;
     public static final short LOWER_HIGHER_BYTE_SIZE = (short) 8;

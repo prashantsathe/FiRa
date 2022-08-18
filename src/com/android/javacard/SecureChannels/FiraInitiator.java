@@ -410,11 +410,13 @@ public class FiraInitiator {
         return ERROR;
     }
 
+    // CSML-v1.0.0-IPR section 8.2.1.2
     public short getSelectADFCmdSC1(byte[] buffer, short bufferOffset, byte[] oidData,
             short oidDataOffset, short oidDataLength, short privacySelKey) {
 
         short index = bufferOffset;
         boolean tagNumberPresent = privacySelKey == 0 ? false : (privacySelKey > 31 ? true : false);
+        short lc = (short) (tagNumberPresent ? 21 : 18); 
 
         // CLA/INS/P1P2
         buffer[index++] = T_80;
@@ -422,12 +424,10 @@ public class FiraInitiator {
         buffer[index++] = C_04;
         buffer[index++] = tagNumberPresent ? (byte) 0x00 : (byte) privacySelKey;
 
+        // {T1 ║ L1 ║ OID1} [ ║ … ║ {Tn ║ Ln ║ OIDn}] ║ [‘83’ ║ Lt ║ TagNumber] ║ {‘85’ ║ Lr ║RandomData1}
         // The extended length APDU fields shall be supported.
         buffer[index++] = 0x00;
-        // 21 is subsequent pre-calculated length
-        index = Util.setShort(buffer, index, (short) (oidDataLength + 21));
-
-        // {T1 ║ L1 ║ OID1} [ ║ … ║ {Tn ║ Ln ║ OIDn}] ║ [‘83’ ║ Lt ║ TagNumber] ║ {‘85’ ║ Lr ║RandomData1}
+        index = Util.setShort(buffer, index, (short) (oidDataLength + lc));
         index = Util.arrayCopyNonAtomic(oidData, oidDataOffset, buffer, index, oidDataLength);
 
         if (tagNumberPresent) {
@@ -439,10 +439,9 @@ public class FiraInitiator {
         buffer[index++] = T_85;
         buffer[index++] = (byte) BlOCK_16BYTES;
 
-        mContext.mBuf[O_SCP_STATUS] = SC1_SELECT_ADF;
-
         RandomData.getInstance(RandomData.ALG_FAST).nextBytes(mContext.mBuf,
                 O_RANDOM_DATA1, BlOCK_16BYTES);
+        mContext.mBuf[O_SCP_STATUS] = SC1_SELECT_ADF;
         return (short) (Util.arrayCopyNonAtomic(mContext.mBuf, O_RANDOM_DATA1,
                 buffer, index, BlOCK_16BYTES) - bufferOffset);
     }

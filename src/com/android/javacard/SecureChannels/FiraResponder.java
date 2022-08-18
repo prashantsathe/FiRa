@@ -476,7 +476,7 @@ public class FiraResponder {
         short cDataBuffLength = (short) (dataBuffLength - cDataOffset);
 
         if (p2 == C_00) {
-            if (cDataBuffLength != (short) 38) { // 38/20/10 precalculated values
+            if (cDataBuffLength != (short) 38) { // 38/20/10 pre-calculated values
                 ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
             }
         } else if ((adfPrivacy && cDataBuffLength != (short) 38) || (!adfPrivacy &&
