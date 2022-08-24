@@ -1,0 +1,584 @@
+#
+# Copyright(C) 2022 The Android Open Source Project
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+/printf "################################################################\n"
+/printf "\n\t\tDescription:- SUS applet test suite script\n  \t\t\t\t\tusing sample Key Exchange applet\n"
+/printf "\nJCOP info : "
+version
+/printf "################################################################\n"
+
+#--> "Make sure to set the File path before using the script, like below"
+#--> /set-var path "/usr/local/google/home/prashant_sathe/eclipse-workspace/SusApplets"
+
+
+#--> "Setup secure channel interface"
+#--> "NOTE:- make sure to enable only one of the setup function at a time to setup secure channel either scp03 or scp11a"
+
+/set-var -g SCP_INTERFACE 03 # making scp03 default interface
+FUNCsetupcard_scp03_ISD    # --> "For debugging purpose, for this setup first we need to load the SUS applets manually (see scp03_SSD cap loadings)"
+#FUNCsetupcard_scp03_SSD   # --> "make sure '/close' any jcshell on jcop to avoid connection issue"
+#FUNCsetupcard_scp11_SSD  # --> "make sure '/close' any jcshell on jcop to avoid connection issue"
+
+#--> "Test cases"
+FUNCresetRDSslots
+FUNCtest_ReadWrite
+FUNCtest_Check_Duplicate_SessionID
+FUNCtest_Check_Slot_OverFlow
+FUNCtest_Check_multiple_RDS_read
+FUNCtest_Check_multiple_erase_cmds
+
+#--> "Upgrade test cases"
+#FUNCtest_Upgrade
+#FUNCtest_Upgrade_failure
+
+DEFUN FUNCtest_Upgrade
+    # Set up the card/upgrade manager for upgrade applet operation
+    /printf "\n\nUpgrade test\n"
+    /printf "-------------------------------------------\n"
+
+    /printf "----------->Upload new cap file (MAKE SURE TO HAVE VERSION GREATER THAN OLD VERSION)\n"
+    select
+    i-u
+    e-a plain
+    upload -b 250 "/usr/local/google/home/sathep/eclipse-workspace/SusApplets_upgrade/bin/com/android/sus1/javacard/sus1.cap"
+    install -i |CL_AMSD| -s -r -x -a -q C9#(81#(0370)82#(F0F0)87#(F0F0)) A0000001515350 A000000151535041
+
+    /select |CL_AMSD|
+    set-key 1/1/AES/404142434445464748494A4B4C4D4E4F 1/2/AES/404142434445464748494A4B4C4D4E4F 1/3/AES/404142434445464748494A4B4C4D4E4F
+    auth mac
+    send 80EA0100#(A1#(4F#(a0000008675301)4F#(a0000008675302)80#(84)))00
+    /printf "----------->Get Upgrade status(Check tag 0x90) & card info\n"
+    send 80EA0800
+
+    select
+    i-u
+    e-a plain
+    card-info
+END
+
+DEFUN FUNCtest_Upgrade_failure
+    # Set up the card/upgrade manager for upgrade applet failed operation
+    /printf "\n\nUpgrade failure test\n"
+    /printf "-------------------------------------------\n"
+
+    /printf "----------->Upload new cap file (MAKE SURE TO HAVE VERSION LOWER THAN OLD VERSION)\n"
+    select
+    i-u
+    e-a plain
+    # change the files location accordingly
+    upload -b 250 "/usr/local/google/home/sathep/eclipse-workspace/SusApplets_upgrade/bin/com/android/sus1/javacard/sus1.cap"
+    install -i |CL_AMSD| -s -r -x -a -q C9#(81#(0370)82#(F0F0)87#(F0F0)) A0000001515350 A000000151535041
+
+    /select |CL_AMSD|
+    set-key 1/1/AES/404142434445464748494A4B4C4D4E4F 1/2/AES/404142434445464748494A4B4C4D4E4F 1/3/AES/404142434445464748494A4B4C4D4E4F
+    auth mac
+    send 80EA0100#(A1#(4F#(a0000008675301)4F#(a0000008675302)80#(84)))00
+    
+    /printf "----------->Get Upgrade status(Check tag 0x90) & card info\n"
+    send 80EA0800
+    select
+    i-u
+    e-a plain
+    card-info
+    
+    try
+    # change the files location accordingly
+    upload -b 250 "/usr/local/google/home/sathep/eclipse-workspace/SusApplets/SusApplets/bin/com/android/sus/javacard/sus.cap"
+    catch true
+    #upload -b 250 "/usr/local/google/home/sathep/eclipse-workspace/SusApplets/SusApplets/bin/com/android/sus/javacard/sus.cap"
+    end
+    
+    /printf "----------->Get Upgrade status(Check tag 0x90) & card info\n"
+    /select |CL_AMSD|
+    auth mac
+    send 80EA0800
+    select
+    i-u
+    e-a plain
+    card-info
+END
+
+
+DEFUN FUNCsetupcard_scp03_ISD
+    # select card and set AES keys for scp03
+    /printf "\n\nSetup the security domain scp to 03\n"
+    /printf "-------------------------------------------\n"
+    select
+    auth mac
+    set-key 48/1/AES/404142434445464748494A4B4C4D4E4F 48/2/AES/404142434445464748494A4B4C4D4E4F 48/3/AES/404142434445464748494A4B4C4D4E4F
+    put-keyset 48
+    
+    /echo "$$$$$$$ SCP 03 setup successful $$$$\n"
+    /set-var -g SCP_INTERFACE 03
+END
+
+DEFUN FUNCsetupcard_scp03_SSD
+    /term Remote|localhost:8050:9050
+    /reset
+    /atr
+    /card -c com.nxp.id.jc.CardManager
+
+    select
+    auth mac
+    set-key 48/1/AES/404142434445464748494A4B4C4D4E4F 48/2/AES/404142434445464748494A4B4C4D4E4F 48/3/AES/404142434445464748494A4B4C4D4E4F
+    put-keyset 48
+
+    select
+    i-u 48
+    e-a mac
+    ls -f
+    install -s -r -q C9#(81#(0370)82#(F0)83#(F0)) A0000001515350 A000000151535041
+
+    /select A000000151535041
+    auth mac
+    set-key 48/1/AES/404142434445464748494A4B4C4D4E4F 48/2/AES/404142434445464748494A4B4C4D4E4F 48/3/AES/404142434445464748494A4B4C4D4E4F
+    put-keyset 48
+
+    /select A000000151535041
+    i-u 48
+    e-a mac
+    ls -f
+
+    select
+    auth mac
+    # NOTE:- change the cap files location accordingly
+    upload -b 250 -s A000000151535041 "/usr/local/google/home/sathep/eclipse-workspace/SusApplets/SusApplets/lib/caps/org/firaconsortium/sus/javacard/sus.cap"
+    upload -b 250 -s A000000151535041 "/usr/local/google/home/sathep/eclipse-workspace/Fira/BERLibrary/bin/com/android/ber/javacard/ber.cap"
+    upload -b 250 -s A000000151535041 "/usr/local/google/home/sathep/eclipse-workspace/SusApplets/SusApplets/bin/com/android/sus/javacard/sus.cap"
+    upload -b 250 -s A000000151535041 "/usr/local/google/home/sathep/eclipse-workspace/SusApplets/SusApplets/bin/com/android/example/javacard/example.cap"
+
+    install -i a0000008670304  -q C9#() a00000086703 a0000008670304
+    install -i a00000086753555300  -q C9#() a0000008675301 a00000086753555300
+    
+    /echo "$$$$$$$ SCP 03 setup successful $$$$\n"
+    /set-var -g SCP_INTERFACE 03
+END
+
+
+DEFUN FUNCsetupcard_scp11_SSD
+    /term Remote|localhost:8050:9050
+    /reset
+    /atr
+    /card -c com.nxp.id.jc.CardManager
+
+
+    #ISD_AID
+    /set-var ISD.AID A000000151000000
+    #SSD Package AID
+    /set-var SSD.PKG.AID A0000001515350
+    #SSD Package-Module 1 AID
+    /set-var SSD.M1.AID A000000151535041
+
+    #AMSD AID
+    /set-var AMSD.1 |AMSD_SCP11a|
+
+    #ELF, Module and Application AID
+    /set-var ELF_AID 0102030405
+    /set-var MODULE_AID 01020304050001
+
+    /set-var APP_AID_1 |USER_APP01|
+    /set-var APP_AID_2 |USER_APP02|
+    /set-var APP_AID_3 |USER_APP03|
+    /set-var APP_AID_4 |USER_APP04|
+
+    ################################################################################
+    # Example ECC key pairs
+    # cf. https://tools.ietf.org/html/rfc6932
+    #
+    /set-var -g ECC_CURVEPARAM_P A9FB57DBA1EEA9BC3E660A909D838D726E3BF623D52620282013481D1F6E5377
+    /set-var -g ECC_CURVEPARAM_A 7D5A0975FC2C3057EEF67530417AFFE7FB8055C126DC5C6CE94A4B44F330B5D9
+    /set-var -g ECC_CURVEPARAM_B 26DC5C6CE94A4B44F330B5D9BBD77CBF958416295CF7E1CE6BCCDC18FF8C07B6
+    /set-var -g ECC_CURVEPARAM_G 048BD2AEB9CB7E57CB2C4B482FFC81B7AFB9DE27E1E3BD23C23A4453BD9ACE3262547EF835C3DAC4FD97F8461A14611DC9C27745132DED8E545C1D54C72F046997
+    /set-var -g ECC_CURVEPARAM_N A9FB57DBA1EEA9BC3E660A909D838D718C397AA3B561A6F7901E0E82974856A7
+    /set-var -g ECC_CURVEPARAM_K 01
+
+    #EC NIST 256 Curve parameter
+    /set-var -g NIST_FP_256_P               FFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFF
+    /set-var -g NIST_FP_256_A               FFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFC
+    /set-var -g NIST_FP_256_B               5AC635D8AA3A93E7B3EBBD55769886BC651D06B0CC53B0F63BCE3C3E27D2604B
+    /set-var -g NIST_FP_256_N               FFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551
+    /set-var -g NIST_FP_256_Gx              6B17D1F2E12C4247F8BCE6E563A440F277037D812DEB33A0F4A13945D898C296
+    /set-var -g NIST_FP_256_Gy              4FE342E2FE1A7F9B8EE7EB4A7C0F9E162BCE33576B315ECECBB6406837BF51F5
+    /set-var -g NIST_FP_256_K               01
+
+    ################################################################################
+    #EC private and public key used by SCP11a
+    #
+    #use below command in JCShell to generate ECC key Pair
+    #
+    #cm> /register JCipher 0102030405 com.ibm.jc.tools.CryptoPlugin
+    #cm> /applet JCipher
+    #/set-var -g ECC_CURVEPARAM_P A9FB57DBA1EEA9BC3E660A909D838D726E3BF623D52620282013481D1F6E5377
+    #/set-var -g ECC_CURVEPARAM_A 7D5A0975FC2C3057EEF67530417AFFE7FB8055C126DC5C6CE94A4B44F330B5D9
+    #/set-var -g ECC_CURVEPARAM_B 26DC5C6CE94A4B44F330B5D9BBD77CBF958416295CF7E1CE6BCCDC18FF8C07B6
+    #/set-var -g ECC_CURVEPARAM_G 048BD2AEB9CB7E57CB2C4B482FFC81B7AFB9DE27E1E3BD23C23A4453BD9ACE3262547EF835C3DAC4FD97F8461A14611DC9C27745132DED8E545C1D54C72F046997
+    #/set-var -g ECC_CURVEPARAM_N A9FB57DBA1EEA9BC3E660A909D838D718C397AA3B561A6F7901E0E82974856A7
+
+    #Key Pair #1
+    #JCipher> keygen -m ECC -o keypairgen
+    #JCipher> /echo ${KEY_ECC_PrivateKey}
+    #410FFF7BF3D7CD83837049D4FF9E1B6460AD53F64D6970C82A39DBD81AE9686E
+    #JCipher> /echo ${KEY_ECC_PublicKeyX}
+    #3FF91EA3894E1FD9EFB3F9202EC83C68563954683395E9CA0267DF6543B05808
+    #JCipher> /echo ${KEY_ECC_PublicKeyY}
+    #015B1898F333AB0DFB6FF2F4E67A98FDEE3EA70217600CACB6784E0802E817F4
+
+    #Key Pair #2
+    #JCipher> keygen -m ECC -o keypairgen
+    #JCipher> /echo ${KEY_ECC_PrivateKey}
+    #375395E5495B5B0B1C8679C19E5D4934D8CA8FA4AEA2E4E1D4BDB300B61B106D
+    #JCipher> /echo ${KEY_ECC_PublicKeyX}
+    #07C1EBD809FBD60FDD2A33992E7D6C5B667EA314B79F01D778B1C380390E44E3
+    #JCipher> /echo ${KEY_ECC_PublicKeyY}
+    #746C0CE29379DFB6D9C85B2E8A3C74375DEA2ECE239E3D29238ECA67CB698D3B
+    #
+    /set-var -g  SK.CA-KLOC.ECDSA           863baa7f788c20195d6dc68e8ba73d2d728d17b7e6451731695c25ee46ca9289
+    /set-var -g  PKX.CA-KLOC.ECDSA          70cae125c051ef3bb64febdf335fba0c2d2782d85337df3ef904e92b7449862b
+    /set-var -g  PKY.CA-KLOC.ECDSA          b56391e433dcc7dfafa19bff6723e092ff55b895202a7708952730ac0844b3fa
+    /set-var -g  PK.CA-KLOC.ECDSA           04${PKX.CA-KLOC.ECDSA}${PKY.CA-KLOC.ECDSA}
+    #
+    #/set-var -g  SK.CA-KLOC.ECDSA           375395E5495B5B0B1C8679C19E5D4934D8CA8FA4AEA2E4E1D4BDB300B61B106D
+    #/set-var -g  PKX.CA-KLOC.ECDSA          07C1EBD809FBD60FDD2A33992E7D6C5B667EA314B79F01D778B1C380390E44E3
+    #/set-var -g  PKY.CA-KLOC.ECDSA          746C0CE29379DFB6D9C85B2E8A3C74375DEA2ECE239E3D29238ECA67CB698D3B
+    #/set-var -g  PK.CA-KLOC.ECDSA           04${PKX.CA-KLOC.ECDSA}${PKY.CA-KLOC.ECDSA}
+    #
+    /set-var -g  SK.CA-KLCC.ECDSA           0202020202020202020202020202020202020202020202020202020202020202
+    /set-var -g  PKX.CA-KLCC.ECDSA          550F471003F3DF97C3DF506AC797F6721FB1A1FB7B8F6F83D224498A65C88E24
+    /set-var -g  PKY.CA-KLCC.ECDSA          136093D7012E509A73715CBD0B00A3CC0FF4B5C01B3FFA196AB1FB327036B8E6
+    /set-var -g  PK.CA-KLCC.ECDSA           04${PKX.CA-KLCC.ECDSA}${PKY.CA-KLCC.ECDSA}
+    #
+    #/set-var -g  SK.CA-KLCC.ECDSA           375395E5495B5B0B1C8679C19E5D4934D8CA8FA4AEA2E4E1D4BDB300B61B106D
+    #/set-var -g  PKX.CA-KLCC.ECDSA          07C1EBD809FBD60FDD2A33992E7D6C5B667EA314B79F01D778B1C380390E44E3
+    #/set-var -g  PKY.CA-KLCC.ECDSA          746C0CE29379DFB6D9C85B2E8A3C74375DEA2ECE239E3D29238ECA67CB698D3B
+    #/set-var -g  PK.CA-KLCC.ECDSA           04${PKX.CA-KLCC.ECDSA}${PKY.CA-KLCC.ECDSA}
+
+
+    /set-var -g  SK.OCE.ECKA                dd5758fcff3b05fa5c98faac83cb06ed1a2f1fe9895a95856e2b9275ca1039ea
+    /set-var -g  PKX.OCE.ECKA               1238e27062de1303c7640e9b8f168f892b2c485c1f08f31929a6ec41cb768398
+    /set-var -g  PKY.OCE.ECKA               bcb79d484fb6433c4d130fe3866bef00467104aaa49a6423121f6071f75bb5ef
+    /set-var -g  PK.OCE.ECKA                04${PKX.OCE.ECKA}${PKY.OCE.ECKA}
+    /set-var -g  CERT.OCE.ECKA              7f2181c6930a542e4f43452e45434b4142085345435f4b4c4f435f200f5343503131415f4f43455f45434b41950200805f2504201911015f2404203910277f4946b041041238e27062de1303c7640e9b8f168f892b2c485c1f08f31929a6ec41cb768398bcb79d484fb6433c4d130fe3866bef00467104aaa49a6423121f6071f75bb5eff001005f37403373b3d0aefdf96741e4734bf19a0c6a9cb84c64099fcc75bcdd038726012cd8d128d88860dfa11a52c1c1762cd1c9bcd6715a1656487a50f0e88853ec9f3209
+
+    /set-var -g  SK.SD.ECKA                 0404040404040404040404040404040404040404040404040404040404040404
+    /set-var -g  PKX.SD.ECKA                73103EC30B3CCF57DAAE08E93534AEF144A35940CF6BBBA12A0CF7CBD5D65A64
+    /set-var -g  PKY.SD.ECKA                D82C8C99E9D3C45F9245BA9B27982C9AEA8EC1DB94B19C44795942C0EB22AA32
+    /set-var -g  PK.SD.ECKA                 04${PKX.SD.ECKA}${PKY.SD.ECKA}
+
+    /set-var -g  eSK.OCE.ECKA               0505050505050505050505050505050505050505050505050505050505050505
+    /set-var -g  ePKX.OCE.ECKA              07810EA974CEA5773E63B897F37E3BE9A09E7A5FE9B971A44D1065AC2A3A9311
+    /set-var -g  ePKY.OCE.ECKA              637E47A4F99464A0FDCE44A88EC7D703A9183C1D06552D9E2D6B76069481C577
+    /set-var -g  ePK.OCE.ECKA               04${ePKX.OCE.ECKA}${ePKY.OCE.ECKA}
+
+    ################################################################################
+    #SCP11A KEY_DEK
+    /set-var -g  SCP11A_KEY_DEK             11111111111111111111111111111111
+    ################################################################################
+
+    # register crypto plugin
+
+
+    ################################################################################
+    /echo "================reset and select ISD"
+
+
+    /register JCipher 0102030405 com.ibm.jc.tools.CryptoPlugin
+    /applet JCipher
+
+    /card
+    #set-key 32/1/DES-ECB/404142434445464748494A4B4C4D4E4F 32/2/DES-ECB/404142434445464748494A4B4C4D4E4F 32/3/DES-ECB/404142434445464748494A4B4C4D4E4F
+
+    /echo "================ISD auth"
+    auth mac
+
+    /echo "================ISD delete app, elf, AMSD"
+    -delete ${APP_AID_1}
+
+    -delete ${ELF_AID}
+
+    -delete -c ${AMSD.1}
+    -delete ${AMSD.1}
+    /echo "================ISD install AMSD.1(only support scp11a)"
+    install -i ${AMSD.1} -s -a -r -q C9#(81#(1101)82#(F0)87#(F0))B6#(5f20#(5343503131415f4f43455f45434b41)) ${SSD.PKG.AID} ${SSD.M1.AID}
+
+    ################################################################################
+    /echo "================ISD store EC curve parameters(bp256r1 256)"
+    #store data 00B9-ECC Curve Parameters
+    #Refer to Amendment E: chapter 4.7 STORE DATA(ECC Key)
+    #Refer to GP SE Configuration: chapter 5.9.3 Key Data Field for ECC Public Keys 
+
+    store-data -m -b 00 00B9#(B9#(80#(F0)85#(00))B9#(80#(B2)81#(20))B9#(80#(B3)81#(20))B9#(80#(B4)81#(20))B9#(80#(B5)81#(41))B9#(80#(B6)81#(20))B9#(80#(B7)81#(01)))
+    # P
+    store-data -m -b 01 0030#(${NIST_FP_256_P})
+    # A
+    store-data -m -b 02 0031#(${NIST_FP_256_A})
+    # B
+    store-data -m -b 03 0032#(${NIST_FP_256_B})
+    # G
+    store-data -m -b 04 0033#(04${NIST_FP_256_Gx}${NIST_FP_256_Gy})
+    # N
+    store-data -m -b 05 0034#(${NIST_FP_256_N})
+    # K
+    store-data -m -b 06 0035#(${NIST_FP_256_K})
+
+    #store-data -m -b 00 00B9#(B9#(80#(F0)85#(03))B9#(80#(B2)81#(20))B9#(80#(B3)81#(20))B9#(80#(B4)81#(20))B9#(80#(B5)81#(41))B9#(80#(B6)81#(20))B9#(80#(B7)81#(01)))
+    ## P
+    #store-data -m -b 01 0030#(A9FB57DBA1EEA9BC3E660A909D838D726E3BF623D52620282013481D1F6E5377)
+    ## A
+    #store-data -m -b 02 0031#(7D5A0975FC2C3057EEF67530417AFFE7FB8055C126DC5C6CE94A4B44F330B5D9)
+    ## B
+    #store-data -m -b 03 0032#(26DC5C6CE94A4B44F330B5D9BBD77CBF958416295CF7E1CE6BCCDC18FF8C07B6)
+    ## G
+    #store-data -m -b 04 0033#(048BD2AEB9CB7E57CB2C4B482FFC81B7AFB9DE27E1E3BD23C23A4453BD9ACE3262547EF835C3DAC4FD97F8461A14611DC9C27745132DED8E545C1D54C72F046997)
+    ## N
+    #store-data -m -b 05 0034#(A9FB57DBA1EEA9BC3E660A909D838D718C397AA3B561A6F7901E0E82974856A7)
+    ## K
+    #store-data -m -b 06 0035#(01)
+
+    ################################################################################
+
+    ################################################################################
+    /register cipher 0102030405 com.ibm.jc.tools.CryptoPlugin
+    /app cipher
+
+    /echo "================personalize AMSD.1"
+    /card
+    /app cipher
+    #set-key 32/1/DES-ECB/404142434445464748494A4B4C4D4E4F 32/2/DES-ECB/404142434445464748494A4B4C4D4E4F 32/3/DES-ECB/404142434445464748494A4B4C4D4E4F
+    auth mac
+    #personalize ${AMSD.1}
+    send 80E62000#(0000#("${AMSD.1}")000000)00 009000
+    /app cipher
+    /echo "================store SK.SD.ECKA => AMSD"
+    store-data -m -b 00 00B9#(B9#(95#(42)80#(B1)81#(20)82#(11)83#(18))B9#(80#(F0)85#(00)))
+    encrypt  -m "DES/ECB" -p NOPAD ${SK.SD.ECKA}
+
+    store-data -m -b 01 8137#(${last.return})
+
+    ################################################################################
+    #T = 7F21 L = 00E8 []
+    #        T = 93 L = 0010 V = 93939393939393939393939393939393  []
+    #        T = 42 L = 0007 V = 42424242424242  []
+    #        T = 5F20 L = 0010 V = 20202020202020202020202020202020  []
+    #        T = 95 L = 0002 V = 0080  []
+    #        T = 5F25 L = 0004 V = 20160101  []
+    #        T = 5F24 L = 0004 V = 20260630  []
+    #        T = 45 L = 0010 V = 45454545454545454545454545454545  []
+    #        T = 53 L = 0008 V = 5353535353535353  []
+    #        T = 7F49 L = 0046 []
+    #                T = B0 L = 0041 V = 0473103EC30B3CCF57DAAE08E93534AEF144A35940CF6BBBA12A0CF7CBD5D65A64D82C8C99E9D3C45F9245BA9B27982C9AEA8EC1DB94B19C44795942C0EB22AA32  []
+    #                T = F0 L = 0001 V = 00  []
+    #        T = 5F37 L = 0040 V = CCEC7B0A621DE21BF6840790ACE1B659599696D1EE473A3E80265B410AD6B3A472B2EA501D17C73E020EB0261ED5E854045BB9451B25EA2E684B3E731ED83C75  []
+
+    /set-var cert_sd_ecka 7F2181E89310939393939393939393939393939393934207424242424242425F201020202020202020202020202020202020950200805F2504201601015F240420260630451045454545454545454545454545454545530853535353535353537F4946B0410473103EC30B3CCF57DAAE08E93534AEF144A35940CF6BBBA12A0CF7CBD5D65A64D82C8C99E9D3C45F9245BA9B27982C9AEA8EC1DB94B19C44795942C0EB22AA32F001005F3740CCEC7B0A621DE21BF6840790ACE1B659599696D1EE473A3E80265B410AD6B3A472B2EA501D17C73E020EB0261ED5E854045BB9451B25EA2E684B3E731ED83C75
+
+    /echo "================store CERT.SD.ECKA => AMSD"
+    send 80E21002#(A6#(83#(1118))BF2181#(${cert_sd_ecka})) 9000
+
+    ################################################################################
+    /echo "================store PK.CA-KLOC.ECDSA => AMSD"
+    #for FIPS P256, key parameter reference value is '00'
+    store-data -m -b 03 00B9#(B9#(95#(82)80#(B0)81#(41)82#(10)83#(18))B9#(80#(F0)85#(00)))
+
+    #for Brainpool P256r1, key parameter reference value is '03'
+    #store-data -m -b 03 00B9#(B9#(95#(82)80#(B0)81#(41)82#(10)83#(18))B9#(80#(F0)85#(03)))
+
+    store-data -m -b 04 0036#(${PK.CA-KLOC.ECDSA})
+
+    ################################################################################
+    /echo "================store SCP11A KEY_DEK => AMSD"
+    encrypt -m "DES/ECB" -p NOPAD ${SCP11A_KEY_DEK}
+    /set-var -g dek_enc_key ${last.return}
+    encrypt -m "AES/CBC" -k ${SCP11A_KEY_DEK} -p NOPAD 01010101010101010101010101010101
+    /set-var -g key_dek_kcv ${last.return;s0,6}
+    try
+    store-data -m -b 05 00B9#(B9#(95#(38)80#(88)81#(10)82#(12)83#(18)84#(${key_dek_kcv})))
+    store-data -b 06 8113#(${dek_dek_kcv})
+    catch true
+    /echo "================store SCP11A KEY_DEK failed! why?"
+    end
+
+    ################################################################################
+
+    /app cm
+    #set-key 32/1/DES-ECB/404142434445464748494A4B4C4D4E4F 32/2/DES-ECB/404142434445464748494A4B4C4D4E4F 32/3/DES-ECB/404142434445464748494A4B4C4D4E4F
+    /echo "================ISD auth"
+    auth mac
+
+    /echo "================ISD extradite AMSD to itself"
+    extradite ${AMSD.1} ${AMSD.1}
+    ################################################################################
+
+    /card
+
+    #/set-var -g CERT.OCE.SERIAL 0102030405060708
+    #/set-var -g CERT.OCE.CAID 0102030405
+    #/set-var -g CERT.OCE.SUBJID 010203040506
+    #/set-var -g CERT.OCE.KEYUSE 0080
+    #/set-var -g CERT.OCE.EFFECTIVEDATE 20100401
+    #/set-var -g CERT.OCE.EXPIRATIONDATE 20180401
+    #/set-var -g CERT.OCE.CASECDOMIMGNR 0405060708
+    #/set-var -g CERT.OCE.DISCRDATA 0102030405060708
+    #/set-var -g CERT.OCE.DISCRDATAFORMAT unspecified
+    #/set-var -g CERT.OCE.CURVE 00
+    #/set-var -g OCE.HOSTID 010203
+    #/set-var -g SD.ID.NUMBER 010203
+    #/set-var -g SD.IMAGE.NUMBER 040506
+
+    ################################################################################
+
+    /echo "================AMSD upload capfile"
+    select
+    auth mac
+    # NOTE:- change the cap files location accordingly
+    upload -b 250 -s ${AMSD.1} "/usr/local/google/home/sathep/eclipse-workspace/SusApplets/SusApplets/lib/caps/org/firaconsortium/sus/javacard/sus.cap"
+    upload -b 250 -s ${AMSD.1} "/usr/local/google/home/sathep/eclipse-workspace/Fira/BERLibrary/bin/com/android/ber/javacard/ber.cap"
+    upload -b 250 -s ${AMSD.1} "/usr/local/google/home/sathep/eclipse-workspace/SusApplets/SusApplets/bin/com/android/sus/javacard/sus.cap"
+    upload -b 250 -s ${AMSD.1} "/usr/local/google/home/sathep/eclipse-workspace/SusApplets/SusApplets/bin/com/android/example/javacard/example.cap"
+
+    install -i a0000008670304  -q C9#() a00000086703 a0000008670304
+    install -i a00000086753555300  -q C9#() a0000008675301 a00000086753555300
+
+    /echo "================select AMSD"
+    /select ${AMSD.1}
+
+    /echo "================AMSD get certificate"
+    get-sd-cert -k ${PK.CA-KLCC.ECDSA} 24 17
+    
+    /echo "$$$$$$$ SCP 11 setup successful $$$$\n"
+    /set-var -g SCP_INTERFACE 11
+END
+
+DEFUN FUNCresetRDSslots
+    /printf "\n\nReset RDS slots \n"
+    /printf "-------------------------------------------\n"
+    /select a0000008670304
+    send 0000000000
+END
+
+DEFUN FUNCtest_ReadWrite
+    # Create RDS data using sample Keyexchange applet
+    /printf "\n\nSingle Create RDS & get RDS test\n"
+    /printf "-------------------------------------------\n"
+    /select a0000008670304
+    send 00000100
+    
+    # Select SUS applet and get RDS information
+    # /printf "\n\nSelect SUS applet and get RDS information\n"
+    # /printf "-------------------------------------------\n"
+    /select a00000086753555300
+    
+    if ${SCP_INTERFACE} == 03
+        i-u 48
+        e-a crmacencrenc
+    elseif ${SCP_INTERFACE} == 11
+        p-s-o -s 24 -i 16 -k ${SK.OCE.ECKA} -c ${CERT.OCE.ECKA}
+        m-a SCP_11_A_02 crmacencrenc
+    end
+    
+    send 844000000401020304
+END
+
+DEFUN FUNCtest_Check_Duplicate_SessionID
+    # Checking duplicate session ID
+    /printf "\n\nCreate two RDS data with same UWB seesion ID\n"
+    /printf "-------------------------------------------\n"
+    /select a0000008670304
+    send 00000100
+    send 00000100
+    FUNCresetRDSslots
+END
+
+DEFUN FUNCtest_Check_Slot_OverFlow
+    # Check Slot overflow & delete one by one
+    /printf "\n\nCheck for slot over flow \n"
+    /printf "-------------------------------------------\n"
+    /select a0000008670304
+    send 00000100
+    send 00000200
+    send 00000300
+    send 00000400
+    send 00000200
+    # delete RDS one by one
+    send 0000000006CF0401020304
+    send 0000000006CF0402020304
+    send 0000000006CF0403020304
+    send 0000000006CF0404020304
+END
+
+DEFUN FUNCtest_Check_multiple_RDS_read
+    # Create multiple RDS's and read it each RDS twice
+    /printf "\n\nCreate multiple RDS's & read it twice \n"
+    /printf "-------------------------------------------\n"
+    /select a0000008670304
+    send 00000100
+    send 00000200
+    send 00000300
+    send 00000400
+    # Read RDS twice
+    /select a00000086753555300
+    if ${SCP_INTERFACE} == 03
+        i-u 48
+        e-a crmacencrenc
+    elseif ${SCP_INTERFACE} == 11
+        p-s-o -s 24 -i 16 -k ${SK.OCE.ECKA} -c ${CERT.OCE.ECKA}
+        m-a SCP_11_A_02 crmacencrenc
+    end
+    
+    send 844000000401020304
+    send 844000000401020304
+    
+    send 844000000402020304
+    send 844000000402020304
+    
+    send 844000000403020304
+    send 844000000403020304
+    
+    send 844000000404020304
+    send 844000000404020304
+END
+
+DEFUN FUNCtest_Check_multiple_erase_cmds
+    # Create multiple RDS's and erase it twice
+    /printf "\n\nCreate multiple RDS's and erase twice \n"
+    /printf "-------------------------------------------\n"
+    /select a0000008670304
+    send 00000100
+    send 00000200
+    send 00000300
+    send 00000400
+    # Read RDS twice
+    /select a00000086753555300
+    if ${SCP_INTERFACE} == 03
+        i-u 48
+        e-a crmacencrenc
+    elseif ${SCP_INTERFACE} == 11
+        p-s-o -s 24 -i 16 -k ${SK.OCE.ECKA} -c ${CERT.OCE.ECKA}
+        m-a SCP_11_A_02 crmacencrenc
+    end
+    
+    send 844100000401020304
+    send 844100000401020304
+    
+    send 844100000402020304
+    send 844100000402020304
+    
+    send 844100000403020304
+    send 844100000403020304
+    
+    send 844100000404020304
+    send 844100000404020304
+END
+

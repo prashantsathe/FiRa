@@ -1,0 +1,38 @@
+#
+# Copyright(C) 2022 The Android Open Source Project
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+/printf "################################################################\n"
+/printf "\n\t\tDescription:- SCP11C test script\n"
+/printf "\nJCOP info : "
+version
+/printf "################################################################\n"
+
+# Make sure to set the File path before using the script, like below
+# /set-var path "/usr/local/google/home/sathep/eclipse-workspace/FiraSecureChannelInterface/src/com/android/javacard/Scp11cexample"
+
+/printf "NOTE: jcop does not support scp11c protocol (on jcshell) \n So we have to add scp11C commands manually\n"
+
+/select a0000008670501
+/send 802A18100001937f2181C5930A542E4F43452E45434B4142085345435F4B4C4F435F200F5343503131415F4F43455F45434B419501825F2504201911015F2404203910277F4946B041041238E27062DE1303C7640E9B8F168F892B2C485C1F08F31929A6EC41CB768398BCB79D484FB6433C4D130FE3866BEF00467104AAA49A6423121F6071F75BB5EFF001005f374008184599c23391b972124656c69b084134aa0c242064497896baafcb191429bfc48295f06b15a3ca88418c11cbf7496e30ab7ea8f3061bf3049335fa78c01e277f2181C6930A542E4F43452E45434B4142085345435F4B4C4F435F200F5343503131415F4F43455F45434B41950200805F2504201911015F2404203910277F4946B041041238E27062DE1303C7640E9B8F168F892B2C485C1F08F31929A6EC41CB768398BCB79D484FB6433C4D130FE3866BEF00467104AAA49A6423121F6071F75BB5EFF001005f37406893b6096914f92fc3c112e358ffa0536c312061761e5667ca1e3ee1e6046f6c7eeb932ffdbb88e6025c7732fccafb2cc8ab75d9002eaf99df7e544c6533b64f
+/send 8082181153A60D9002110395013C8001888101105F49410407810EA974CEA5773E63B897F37E3BE9A09E7A5FE9B971A44D1065AC2A3A9311637E47A4F99464A0FDCE44A88EC7D703A9183C1D06552D9E2D6B76069481C57700
+
+# Now wrap/unwrap testing with counter one sample Wrap/Unwrap command
+# wrap command 
+# /send 842C0000050102030405
+# --> reply must be 7E2DDB189A45E8194078BB732A55C5788757EAB4E5A750569000
+
+# unwrap command
+#/send 842b0000187bd5e4c94aa98b6146219ec50e945b0b67f0958ba6134fe5
+

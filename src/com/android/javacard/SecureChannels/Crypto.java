@@ -315,7 +315,6 @@ public class Crypto {
     }
 
     // TODO: Change/merge the following functions
-
     // KDF in counter mode as specified in NIST SP 800-108 ([NIST 800-108]). The PRF
     // used in the KDF shall be CMAC as specified in [NIST 800-38B], used with full
     // 16-byte output length.
