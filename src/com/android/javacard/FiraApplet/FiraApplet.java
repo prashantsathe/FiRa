@@ -15,7 +15,6 @@
  */
 package com.android.javacard.FiraApplet;
 
-import com.android.javacard.SecureChannels.FiraSecureChannel;
 import javacard.framework.AID;
 import javacard.framework.APDU;
 import javacard.framework.Applet;
@@ -35,9 +34,15 @@ import javacardx.crypto.Cipher;
  */
 import static com.android.javacard.FiraApplet.FiraNoInputValidation.*;
 //import static com.android.javacard.FiraApplet.FiraInputValidation.*;
+import com.android.javacard.SecureChannels.FiraSecureChannel;
 import org.firaconsortium.sus.SecureUwbService;
 
-public class FiraApplet extends Applet implements AppletEvent, MultiSelectable, ExtendedLength {
+import org.globalplatform.upgrade.Element;
+import org.globalplatform.upgrade.OnUpgradeListener;
+import org.globalplatform.upgrade.UpgradeManager;
+
+public class FiraApplet extends Applet implements AppletEvent, MultiSelectable,
+        ExtendedLength, OnUpgradeListener{
 
     final static short IMPL_APDU_BUFFER_MAX_SIZE = 5000;
     static final byte DATA_CACHE_HEADER_LEN = 2;
@@ -1768,5 +1773,48 @@ public class FiraApplet extends Applet implements AppletEvent, MultiSelectable, 
             index++;
         }
         return FiraSpecs.INVALID_VALUE;
+    }
+
+    public void onRestore(Element ele) {
+
+        if (ele != null) {
+            ele.initRead();
+            short oldVersion = ele.readShort();
+
+            // Check if Current version is greater than Old version
+            if (FiraSpecs.CURRENT_PACKAGE_VERSION < oldVersion)
+                ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
+
+            // restore Repository
+            FiraRepository.onRestore(ele);
+        } else {
+            ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
+        }
+    }
+
+    public Element onSave() {
+
+        // Check any active session and throw exception
+        // ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
+
+        // Create element.
+        Element element = UpgradeManager.createElement(Element.TYPE_SIMPLE, 
+                (short) (Element.SIZE_SHORT + FiraRepository.computePrimitiveDataSize()),
+                (short) FiraRepository.computeObjectCount());
+
+        if (element != null) {
+            element.write(FiraSpecs.CURRENT_PACKAGE_VERSION);
+            FiraRepository.onSave(element);
+        }
+
+        return element;
+    }
+
+    public void onCleanup() {
+        // TODO Auto-generated method stub
+    }
+
+    public void onConsolidate() {
+        // TODO Auto-generated method stub
     }
 }

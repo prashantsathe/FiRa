@@ -1,0 +1,181 @@
+#
+# Copyright(C) 2022 The Android Open Source Project
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+/printf "################################################################\n"
+/printf "\n\t\tDescription:- FiRa, applets upgrade tests"
+/printf "\nJCOP info : "
+version
+/printf "\n################################################################\n"
+
+
+/set-var -g ORIGINAL_SIMULATOR_FIRA_APPLET_ELF "/usr/local/google/home/sathep/eclipse-workspace/FiRa_Integration/bin/com/android/javacard/FiraApplet/javacard/FiraApplet.cap"
+/set-var -g LOWER_FIRA_APPLET_ELF "/usr/local/google/home/sathep/Desktop/test/FiRa_Integration_ver001_AID_same04/bin/com/android/javacard/FiraApplet/javacard/FiraApplet.cap"
+/set-var -g HIGHER_FIRA_APPLET_ELF "/usr/local/google/home/sathep/eclipse-workspace/FiRa_Integration/bin/com/android/javacard/FiraApplet/javacard/FiraApplet.cap"
+
+# dependencies
+/set-bar -g BER_AID a00000086706
+/set-var -g HIGHER_BER_ELF "/usr/local/google/home/sathep/Desktop/test/FiRa_Integration/bin/com/android/javacard/ber/javacard/ber.cap"
+/set-bar -g SCP_AID a0000008675303
+/set-var -g HIGHER_SCP_ELF "/usr/local/google/home/sathep/Desktop/test/FiRa_Integration/bin/com/android/javacard/SecureChannels/javacard/SecureChannels.cap"
+
+#--> "Upgrade test cases NOTE:- Before performing any test case make sure to restart and load the
+#     FiRa ELFs(ber, SCP, fiRa, Sus)"
+FUNCtest_auto_Upgrade_version_Higher
+#FUNCtest_manual_Upgrade_higher_version
+#FUNCtest_auto_Upgrade_version_lower
+#FUNCtest_manual_Upgrade_Single_Session_FiRa_BER_secureChannel_upgrade
+
+DEFUN FUNCtest_manual_Upgrade_Single_Session_FiRa_BER_secureChannel_upgrade
+    /printf "\n\Upgrade test : From lower to higher ELF version in manual mode with dependencies\n"
+    # Set up the card/upgrade manager for upgrade applet operation
+    select
+    i-u
+    e-a plain
+
+    /printf "\n-->Card-info\n"
+    card-info
+
+    # manual ELF upgrading (FiRa and Sus)
+    /printf "-> Manage ELF in manual restore mode with new AID is same as old AID \n\n"
+    send 80EA1100#(A1#(4F#(A0000008670304)80#(80)))00
+    send 80EA0100#(A1#(4F#(a0000008675301)80#(80)))00
+
+    /printf "----------->Get Upgrade status(Check tag 0x90) & card info\n"
+    send 80EA0800
+
+    # upload the dependencies files
+    /printf "\n--> upload the new ber/scp files\n"
+    delete -r ${BER_AID}
+    delete -r ${SCP_AID}
+    upload -b 250 ${HIGHER_BER_ELF}
+    upload -b 250 ${HIGHER_SCP_ELF}
+
+    /printf "\n--> upload new FiRa applet\n"
+    upload -b 250 ${HIGHER_FIRA_APPLET_ELF}
+
+    /printf "\n--> Get Upgrade status(Check tag 0x90)\n"
+    send 80EA0800
+
+    /printf "\n--> resume the session\n"
+    send 80EA0200
+
+    /printf "\n--> Get Upgrade status(Check tag 0x90)\n"
+    send 80EA0800
+
+    /printf "\n-->Card-info\n"
+    card-info
+END
+
+DEFUN FUNCtest_manual_Upgrade_higher_version
+    /printf "\n\Upgrade test : From lower to higher ELF version in manual mode\n"
+    # Set up the card/upgrade manager for upgrade applet operation
+    select
+    i-u
+    e-a plain
+
+    /printf "\n-->Card-info\n"
+    card-info
+
+    /printf "-> Manage ELF in manual restore mode with new AID is same as old AID \n\n"
+    send 80EA0100#(A1#(4F#(A0000008670304)80#(80)))00
+
+    /printf "\n--> Get Upgrade status(Check tag 0x90)\n"
+    send 80EA0800
+
+    /printf "\n-->Card-info\n"
+    card-info
+
+    # upload the file
+    /printf "\n--> upload new FiRa applet\n"
+    upload -b 250 ${HIGHER_FIRA_APPLET_ELF}
+
+    /printf "\n--> Get Upgrade status(Check tag 0x90)\n"
+    send 80EA0800
+
+    /printf "-> resume the session\n"
+    send 80EA0200
+
+    /printf "\n--> Get Upgrade status(Check tag 0x90)\n"
+    send 80EA0800
+
+    /printf "\n-->Card-info\n"
+    card-info
+END
+
+DEFUN FUNCtest_auto_Upgrade_version_Higher
+    /printf "\n\nUpgrade test : From lower to higher ELF version\n"
+    # Set up the card/upgrade manager for upgrade applet operation
+    select
+    i-u
+    e-a plain
+
+    /printf "\n--> Manage ELF in auto restore mode with new AID is same as old AID\n"
+    send 80EA0100#(A1#(4F#(A0000008670304)80#(84)))00
+
+    /printf "\n--> Get Upgrade status(Check tag 0x90)\n"
+    send 80EA0800
+
+    /printf "\n-->Card-info\n"
+    card-info
+
+    /printf "\n--> upload new FiRa applet\n"
+    upload -b 250 ${HIGHER_FIRA_APPLET_ELF}
+
+    /printf "\n--> Get Upgrade status(Check tag 0x90)\n"
+    send 80EA0800
+
+    /printf "\n-->Card-info\n"
+    card-info
+END
+
+DEFUN FUNCtest_auto_Upgrade_version_lower
+    /printf "\n\nUpgrade test : From higher to lower ELF version\n"
+    # Set up the card/upgrade manager for upgrade applet operation
+    select
+    i-u
+    e-a plain
+
+    /printf "\n--> Manage ELF in auto restore mode with new AID is same as old AID\n"
+    send 80EA0100#(A1#(4F#(A0000008670304)80#(84)))00
+
+    /printf "\n--> Get Upgrade status(Check tag 0x90)\n"
+    send 80EA0800
+
+    /printf "\n-->Card-info\n"
+    card-info
+
+    /printf "\n--> Upload lower version\n"
+    try
+        upload -b 250 ${LOWER_FIRA_APPLET_ELF}
+    catch true
+        /printf "\n-->Card-info\n"
+        card-info
+    end
+
+    /printf "\n--> Get Upgrade status(Check tag 0x90)\n"
+    send 80EA0800
+
+    /printf "\n--> Upload old(current) version\n"
+    try
+        upload -b 250 ${ORIGINAL_SIMULATOR_FIRA_APPLET_ELF}
+    catch true
+        /printf "\n--> Get Upgrade status(Check tag 0x90)\n"
+        send 80EA0800
+    end
+
+    /printf "\n--> Card-info\n"
+    card-info
+END

@@ -15,6 +15,9 @@
  */
 package com.android.javacard.FiraApplet;
 
+import org.globalplatform.upgrade.Element;
+import org.globalplatform.upgrade.UpgradeManager;
+
 import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
 import javacard.framework.JCSystem;
@@ -509,5 +512,28 @@ public class FiraRepository {
         //FiraUtil.readBERTag(buf, index, len, sRetValues);
         //short tag = sRetValues[0];
         putData(tag, buf, index, len, APPLET_SLOT);
+    }
+
+    public static short computePrimitiveDataSize() {
+        return 0;
+    }
+
+    public static short computeObjectCount() {
+        return (short) 2;
+    }
+
+    public static void onSave(Element element) {
+        if (element == null)
+            return;
+
+        element.write(sSlots).write(sPersistentMem);
+    }
+
+    public static void onRestore(Element element) {
+        if (element == null)
+            return;
+
+        sSlots = (short[]) element.readObject();
+        sPersistentMem = (byte[]) element.readObject();
     }
 }

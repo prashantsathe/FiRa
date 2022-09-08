@@ -30,6 +30,11 @@ public class FiraSpecs {
             (byte) 0xA0, (byte) 0x00, (byte) 0x00, (byte) 0x08, (byte) 0x67, (byte) 0x53,
             (byte) 0x55, (byte) 0x53, (byte) 0x00 };
 
+    // package version is an addition of major version(2 bytes) + minor version(2 bytes)
+    // example 100 = major version 100/100 = 1 and minor version 100%100 = 00
+    //         101 = major version 100/100 = 1 and minor version 101%100 = 01 .. etc
+    public static final short CURRENT_PACKAGE_VERSION = 100;
+
     // Implementation specific limits
     public static final short IMPL_SCRATCH_PAD_MAX_SIZE = 256;
     static final byte IMPL_MASTER_KEY_MAX_SIZE = 16;
